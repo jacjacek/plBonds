@@ -5,9 +5,26 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'Kalkulator obligacji',
+  description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
+  generator: 'Vibecoded, do not trust it',
+  icons: {
+    icon: '/thumbnail.png',
+    apple: '/thumbnail.png',
+    shortcut: '/thumbnail.png',
+  },
+  openGraph: {
+    title: 'Kalkulator obligacji',
+    description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
+    type: 'website',
+    images: ['/thumbnail.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Kalkulator obligacji',
+    description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
+    images: ['/thumbnail.png'],
+  },
 }
 
 export default function RootLayout({
