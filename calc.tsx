@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import type React from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
@@ -67,6 +68,13 @@ const BondsCalculator = () => {
   // Helpers for robust numeric inputs (support comma/dot, preserve mid-typing)
   const normalizeDecimal = (value: string): string => value.replace(/\s+/g, "").replace(",", ".")
   const isPartialNumeric = (value: string): boolean => /^[0-9]*([,.][0-9]*)?$/.test(value)
+
+  const handleEnterBlur = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      e.currentTarget.blur()
+    }
+  }
 
   // Raw input strings to avoid jumping to 0 during typing
   const [investmentRaw, setInvestmentRaw] = useState<string>(String(investment))
@@ -558,6 +566,7 @@ const BondsCalculator = () => {
                     setInvestmentRaw(raw)
                   }
                 }}
+                onKeyDown={handleEnterBlur}
                 onBlur={() => {
                   const normalized = normalizeDecimal(investmentRaw)
                   const parsed = Number.parseFloat(normalized)
@@ -628,6 +637,7 @@ const BondsCalculator = () => {
                       setInflationRaw(raw)
                     }
                   }}
+                  onKeyDown={handleEnterBlur}
                   onBlur={() => {
                     const normalized = normalizeDecimal(inflationRaw)
                     const parsed = Number.parseFloat(normalized)
@@ -656,6 +666,7 @@ const BondsCalculator = () => {
                       setNbpRateRaw(raw)
                     }
                   }}
+                  onKeyDown={handleEnterBlur}
                   onBlur={() => {
                     const normalized = normalizeDecimal(nbpRateRaw)
                     const parsed = Number.parseFloat(normalized)
