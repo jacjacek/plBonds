@@ -37,6 +37,7 @@ interface Bond {
   withdrawalConditions: string
   earlyWithdrawalPossible: boolean
   detailsUrl: string
+  buyUrl: string
 }
 
 interface PurchaseRound {
@@ -87,6 +88,7 @@ const BondsCalculator = () => {
       withdrawalConditions: "3 miesiące od dnia zakupu",
       earlyWithdrawalPossible: false,
       detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-3-miesieczne-ots/",
+      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/ots"
     },
     {
       name: "ROR",
@@ -111,6 +113,7 @@ const BondsCalculator = () => {
       withdrawalConditions: "Rok od dnia zakupu",
       earlyWithdrawalPossible: true,
       detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-roczne-ror/",
+      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/ror"
     },
     {
       name: "DOR",
@@ -135,6 +138,7 @@ const BondsCalculator = () => {
       withdrawalConditions: "Dwa lata od dnia zakupu",
       earlyWithdrawalPossible: true,
       detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-2-letnie-dor/",
+      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/dor"
     },
     {
       name: "TOS",
@@ -158,6 +162,7 @@ const BondsCalculator = () => {
       withdrawalConditions: "Trzy lata od dnia zakupu",
       earlyWithdrawalPossible: false,
       detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-3-letnie-tos/",
+      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/tos"
     },
     {
       name: "COI",
@@ -182,6 +187,7 @@ const BondsCalculator = () => {
       withdrawalConditions: "Cztery lata od dnia zakupu",
       earlyWithdrawalPossible: true,
       detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-4-letnie-coi/",
+      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/coi"
     },
     {
       name: "ROS",
@@ -207,6 +213,7 @@ const BondsCalculator = () => {
       withdrawalConditions: "Sześć lat od dnia zakupu",
       earlyWithdrawalPossible: true,
       detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-6-letnie-ros/",
+      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/ros"
     },
     {
       name: "EDO",
@@ -232,6 +239,7 @@ const BondsCalculator = () => {
       withdrawalConditions: "Dziesięć lat od dnia zakupu",
       earlyWithdrawalPossible: true,
       detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-10-letnie-edo/",
+      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/edo"
     },
     {
       name: "ROD",
@@ -257,6 +265,7 @@ const BondsCalculator = () => {
       withdrawalConditions: "Dwanaście lat od dnia zakupu",
       earlyWithdrawalPossible: true,
       detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-12-letnie-rod/",
+      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/rod"
     },
   ]
 
@@ -723,9 +732,14 @@ const BondsCalculator = () => {
                   </div>
 
                   <div className="px-4 pb-4 pt-4 space-y-2">
-                    <Button className="w-full bg-[#0033CC] hover:bg-[#0029AA] text-white font-semibold rounded-none">
+                    <a
+                      href={bond.buyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center bg-[#0033CC] hover:bg-[#0029AA] text-white font-semibold rounded-none h-10"
+                    >
                       Kup
-                    </Button>
+                    </a>
                     <a
                       href={bond.detailsUrl}
                       target="_blank"
