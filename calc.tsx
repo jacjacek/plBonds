@@ -64,6 +64,15 @@ const BondsCalculator = () => {
   const [expandedBond, setExpandedBond] = useState<string | null>(null)
   const [investment, setInvestment] = useState(100000)
 
+  // Helpers for robust numeric inputs (support comma/dot, preserve mid-typing)
+  const normalizeDecimal = (value: string): string => value.replace(/\s+/g, "").replace(",", ".")
+  const isPartialNumeric = (value: string): boolean => /^[0-9]*([,.][0-9]*)?$/.test(value)
+
+  // Raw input strings to avoid jumping to 0 during typing
+  const [investmentRaw, setInvestmentRaw] = useState<string>(String(investment))
+  const [inflationRaw, setInflationRaw] = useState<string>(String(inflation).replace(".", ","))
+  const [nbpRateRaw, setNbpRateRaw] = useState<string>(String(nbpRate).replace(".", ","))
+
   const bonds: Bond[] = [
     {
       name: "OTS",
@@ -540,11 +549,26 @@ const BondsCalculator = () => {
               </Label>
               <Input
                 id="investment"
-                type="number"
-                value={investment}
-                onChange={(e) => setInvestment(Number.parseFloat(e.target.value) || 0)}
-                step="1000"
-                min="100"
+                type="text"
+                inputMode="decimal"
+                value={investmentRaw}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  if (raw === "" || isPartialNumeric(raw)) {
+                    setInvestmentRaw(raw)
+                  }
+                }}
+                onBlur={() => {
+                  const normalized = normalizeDecimal(investmentRaw)
+                  const parsed = Number.parseFloat(normalized)
+                  if (Number.isFinite(parsed)) {
+                    const clamped = Math.max(100, parsed)
+                    setInvestment(clamped)
+                    setInvestmentRaw(String(clamped).replace(".", ","))
+                  } else {
+                    setInvestmentRaw(String(investment).replace(".", ","))
+                  }
+                }}
                 className="rounded-none text-lg font-semibold"
               />
               <p className="text-sm text-gray-600">Minimalna kwota: 100 PLN</p>
@@ -595,10 +619,25 @@ const BondsCalculator = () => {
                 </Label>
                 <Input
                   id="inflation"
-                  type="number"
-                  value={inflation}
-                  onChange={(e) => setInflation(Number.parseFloat(e.target.value) || 0)}
-                  step="0.1"
+                  type="text"
+                  inputMode="decimal"
+                  value={inflationRaw}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (raw === "" || isPartialNumeric(raw)) {
+                      setInflationRaw(raw)
+                    }
+                  }}
+                  onBlur={() => {
+                    const normalized = normalizeDecimal(inflationRaw)
+                    const parsed = Number.parseFloat(normalized)
+                    if (Number.isFinite(parsed)) {
+                      setInflation(parsed)
+                      setInflationRaw(String(parsed).replace(".", ","))
+                    } else {
+                      setInflationRaw(String(inflation).replace(".", ","))
+                    }
+                  }}
                   className="rounded-none"
                 />
               </div>
@@ -608,10 +647,25 @@ const BondsCalculator = () => {
                 </Label>
                 <Input
                   id="nbpRate"
-                  type="number"
-                  value={nbpRate}
-                  onChange={(e) => setNbpRate(Number.parseFloat(e.target.value) || 0)}
-                  step="0.25"
+                  type="text"
+                  inputMode="decimal"
+                  value={nbpRateRaw}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (raw === "" || isPartialNumeric(raw)) {
+                      setNbpRateRaw(raw)
+                    }
+                  }}
+                  onBlur={() => {
+                    const normalized = normalizeDecimal(nbpRateRaw)
+                    const parsed = Number.parseFloat(normalized)
+                    if (Number.isFinite(parsed)) {
+                      setNbpRate(parsed)
+                      setNbpRateRaw(String(parsed).replace(".", ","))
+                    } else {
+                      setNbpRateRaw(String(nbpRate).replace(".", ","))
+                    }
+                  }}
                   className="rounded-none"
                 />
               </div>
