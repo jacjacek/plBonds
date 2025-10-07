@@ -87,8 +87,8 @@ const BondsCalculator = () => {
       withdrawalFee: "brak",
       withdrawalConditions: "3 miesiące od dnia zakupu",
       earlyWithdrawalPossible: false,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-3-miesieczne-ots/",
-      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/ots"
+      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-miesieczne-ots/ots0126/",
+      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-miesieczne-ots/ots0126/"
     },
     {
       name: "ROR",
@@ -112,8 +112,8 @@ const BondsCalculator = () => {
       withdrawalFee: "50 gr",
       withdrawalConditions: "Rok od dnia zakupu",
       earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-roczne-ror/",
-      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/ror"
+      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-roczne-ror/ror102/",
+      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-roczne-ror/ror102/"
     },
     {
       name: "DOR",
@@ -137,8 +137,8 @@ const BondsCalculator = () => {
       withdrawalFee: "70 gr",
       withdrawalConditions: "Dwa lata od dnia zakupu",
       earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-2-letnie-dor/",
-      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/dor"
+      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-2-letnie-dor/dor1027/",
+      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-2-letnie-dor/dor1027/"
     },
     {
       name: "TOS",
@@ -161,8 +161,8 @@ const BondsCalculator = () => {
       withdrawalFee: "1 zł",
       withdrawalConditions: "Trzy lata od dnia zakupu",
       earlyWithdrawalPossible: false,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-3-letnie-tos/",
-      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/tos"
+      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-letnie-tos/tos1028/",
+      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-letnie-tos/tos1028/"
     },
     {
       name: "COI",
@@ -186,8 +186,8 @@ const BondsCalculator = () => {
       withdrawalFee: "2 zł",
       withdrawalConditions: "Cztery lata od dnia zakupu",
       earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-4-letnie-coi/",
-      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/coi"
+      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-4-letnie-coi/coi1029/",
+      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-4-letnie-coi/coi1029/"
     },
     {
       name: "ROS",
@@ -212,8 +212,8 @@ const BondsCalculator = () => {
       withdrawalFee: "2 zł",
       withdrawalConditions: "Sześć lat od dnia zakupu",
       earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-6-letnie-ros/",
-      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/ros"
+      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-6-letnie-ros/ros1031/",
+      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-6-letnie-ros/ros1031/"
     },
     {
       name: "EDO",
@@ -238,8 +238,8 @@ const BondsCalculator = () => {
       withdrawalFee: "3 zł",
       withdrawalConditions: "Dziesięć lat od dnia zakupu",
       earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-10-letnie-edo/",
-      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/edo"
+      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-10-letnie-edo/edo1035/",
+      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-10-letnie-edo/edo1035/"
     },
     {
       name: "ROD",
@@ -264,8 +264,8 @@ const BondsCalculator = () => {
       withdrawalFee: "3 zł",
       withdrawalConditions: "Dwanaście lat od dnia zakupu",
       earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta/obligacje-12-letnie-rod/",
-      buyUrl: "https://zakup.obligacjeskarbowe.pl/oferta/rod"
+      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-12-letnie-rod/rod1037/",
+      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-12-letnie-rod/rod1037/"
     },
   ]
 
