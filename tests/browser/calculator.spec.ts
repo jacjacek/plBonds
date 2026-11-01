@@ -8,6 +8,11 @@ test("amount updates results, comma decimals work, whole bonds and details recon
   })
   await page.goto("/")
   await expect(page.locator("html")).toHaveAttribute("lang", "pl")
+  await expect(page.getByText("Projekt niezależny od Ministerstwa Finansów i banków.", { exact: true })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Kup", exact: true })).toHaveCount(0)
+  for (const link of await page.locator(".issuer-link").all()) {
+    expect(await link.getAttribute("href")).toMatch(/^https:\/\/www\.obligacjeskarbowe\.pl\/oferta-obligacji\//)
+  }
   const ots = page.getByTestId("bond-OTS")
   await expect(ots.getByTestId("profit")).toContainText("405,00")
   await page.screenshot({ path: `test-results/default-${test.info().project.name}.png`, fullPage: true })

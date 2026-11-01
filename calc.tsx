@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import type React from "react"
 import Image from "next/image"
-import { ArrowUpRight, ChevronDown, ArrowRight, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowUpRight, ChevronDown, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 import { BONDS, OFFER, isOfferCurrent } from "@/lib/bonds"
 import { addMonths, calculateReturn, MAX_INVESTMENT } from "@/lib/calculator"
@@ -85,26 +85,26 @@ const BondsCalculator = () => {
       <header className="site-header">
         <div className="page-width header-inner">
           <a className="wordmark" href="#" aria-label="plBonds — kalkulator obligacji">
-            <span className="brand-name">plBonds</span><span>Obligacje<br />skarbowe</span>
+            <span className="brand-icon" aria-hidden="true"><i /><i /><i /></span><span className="brand-name">plBonds</span>
           </a>
           <nav className="header-nav" aria-label="Nawigacja główna">
             <a href="#kalkulator" className="is-active">Kalkulator</a>
-            <a href="#porownanie">Oferta obligacji</a>
-            <a href="https://www.obligacjeskarbowe.pl/tabela-odsetkowa/" target="_blank" rel="noopener noreferrer">Tabele odsetkowe</a>
-            <a href="https://www.obligacjeskarbowe.pl/listy-emisyjne/" target="_blank" rel="noopener noreferrer">Listy emisyjne</a>
+            <a href="#porownanie">Porównanie</a>
             <a href="#zasady">Jak liczymy?</a>
           </nav>
-          <a className="source-link" href="https://www.obligacjeskarbowe.pl/oferta/" target="_blank" rel="noopener noreferrer">Oficjalna oferta <ArrowUpRight size={15} aria-hidden="true" /></a>
+          <a className="source-link" href="https://www.obligacjeskarbowe.pl/oferta/" target="_blank" rel="noopener noreferrer">Źródło danych <ArrowUpRight size={15} aria-hidden="true" /></a>
         </div>
       </header>
 
       <main id="kalkulator">
         <section className="page-intro page-width" aria-labelledby="page-title">
           <div className="intro-text">
-            <h1 id="page-title">Tabela<br />porównawcza</h1>
-            <p className="intro-copy">Obligacje skarbowe — porównaj aktualną ofertę i oblicz zysk dla swojej kwoty oraz okresu oszczędzania. Wyniki uwzględniają podatek i opłaty za wcześniejszy wykup.</p>
+            <p className="independent-label">Niezależny kalkulator obligacji skarbowych</p>
+            <h1 id="page-title">Policz zysk z obligacji.</h1>
+            <p className="intro-copy">Porównaj ofertę dla swojej kwoty i okresu oszczędzania. Zobacz wynik po podatku i opłatach.</p>
+            <p className="independence-note">Projekt niezależny od Ministerstwa Finansów i banków.</p>
           </div>
-          <Image className="comparison-illustration" src="/comparison.svg" width={360} height={240} alt="" unoptimized priority />
+          <Image className="comparison-illustration" src="/bond-notes.svg" width={280} height={190} alt="" unoptimized priority />
         </section>
 
         <div className="page-width calculator-workspace">
@@ -208,8 +208,8 @@ const BondsCalculator = () => {
         </div>
 
         <section className="results-section page-width" id="porownanie" aria-labelledby="results-title">
+          <h2 className="comparison-title" id="results-title">Porównanie obligacji</h2>
           <div className="results-toolbar">
-            <h2 className="sr-only" id="results-title">Porównanie obligacji skarbowych</h2>
             <div className={`offer-meta ${!offerCurrent ? "offer-archived" : ""}`} role="status">
               <span className="offer-label">Oferta: {OFFER.label}</span><span>Sprzedaż {formatDate(OFFER.validFrom)} – {formatDate(OFFER.validTo)}</span>
               {!offerCurrent && <strong>Ta oferta jest archiwalna. Sprawdź aktualne warunki przed zakupem.</strong>}
@@ -223,10 +223,11 @@ const BondsCalculator = () => {
                 {comparisonResults.map((bond) => (
                   <article key={bond.name} data-testid={`bond-${bond.name}`} className={`bond-row ${bond.name === leader.name && bond.profit > 0 ? "leading-result" : ""} ${bond.basedOnInflation ? "bond-inflation" : bond.basedOnNBP ? "bond-variable" : "bond-fixed"} ${bond.familyOnly ? "bond-family" : ""} ${money(bond.profit).length > 12 ? "long-result" : ""}`} aria-labelledby={`title-${bond.name}`}>
                     <div className="bond-card-header">
-                      <p className="bond-rate">{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}<span>%</span></p>
+                      <div className="bond-card-topline"><span className="bond-code">{bond.name}</span><span className="bond-duration">{term(bond.maturityMonths)}</span></div>
                       <h3 id={`title-${bond.name}`}>{bond.displayName}</h3>
-                      <span className="bond-kind">{bond.basedOnInflation ? "Indeksowane inflacją" : bond.basedOnNBP ? "Zmiennoprocentowe" : "Stałoprocentowe"}</span>
-                      <p className="bond-series"><strong>Seria:</strong> {bond.series}</p>
+                      <span className="bond-kind">{bond.basedOnInflation ? "Indeksowane inflacją" : bond.basedOnNBP ? "Zmienne oprocentowanie" : "Stałe oprocentowanie"}</span>
+                      <p className="bond-rate">{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}<span>%</span><small>rocznie{bond.variableRate ? " na start" : ""}</small></p>
+                      <p className="bond-series">{bond.series}</p>
                     </div>
                     <div className="comparison-value profit-cell"><span className="mobile-cell-label">Zysk netto</span><span className="bond-profit" data-testid="profit">{money(bond.profit)}<small> zł</small></span>{bond.name === leader.name && bond.profit > 0 && <span className="result-tag">Najwyższy wynik</span>}</div>
                     <div className="comparison-value"><span className="mobile-cell-label">Łączne środki netto</span><span>{formatCurrency(bond.totalValue)}</span></div>
@@ -234,7 +235,7 @@ const BondsCalculator = () => {
                     <div className="comparison-value rate-cell"><span className="mobile-cell-label">Oprocentowanie</span><span>{bond.variableRate ? `${bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}% w pierwszym ${bond.basedOnNBP ? "miesiącu" : "roku"}` : `${bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}% w skali roku`}{bond.variableRate && <small>Potem: {bond.basedOnNBP ? "stopa NBP" : "inflacja"} + {bond.margin.toLocaleString("pl-PL", { minimumFractionDigits: 2 })} p.p.</small>}</span></div>
                     <div className="comparison-value mobile-extra"><span className="mobile-cell-label">Wypłata odsetek</span><span>{bond.interestPayment === "monthly" ? "Co miesiąc" : bond.interestPayment === "yearly" ? "Co rok" : "Przy wykupie"}</span></div>
                     <div className="comparison-value fee-cell mobile-extra"><span className="mobile-cell-label">Opłata za wcześniejszy wykup</span><span>{bond.loseInterestOnEarlyWithdrawal ? "Brak, utrata odsetek" : `${bond.withdrawalFee} za obligację`}</span></div>
-                    <div className="comparison-value actions-cell"><a className="purchase-link" href={bond.buyUrl} target="_blank" rel="noopener noreferrer">Kup <ArrowUpRight size={14} aria-hidden="true" /></a><a className="conditions-link" href={bond.detailsUrl} target="_blank" rel="noopener noreferrer">Szczegóły emisji</a></div>
+                    <div className="comparison-value actions-cell"><a className="issuer-link" href={bond.detailsUrl} target="_blank" rel="noopener noreferrer">Warunki u emitenta <ArrowUpRight size={14} aria-hidden="true" /></a><span className="issuer-domain">obligacjeskarbowe.pl</span></div>
                     <details className="bond-calculation"><summary>Rozliczenie <ChevronDown size={17} aria-hidden="true" /></summary>
                   <div className="bond-details">
                     <div className="detail-intro"><span>{bond.series}</span><p>{bond.displayName}</p></div>
@@ -263,7 +264,6 @@ const BondsCalculator = () => {
                     {bond.familyReinvestmentSkipped && <p className="withdrawal-note">Po wykupie środki pozostają w gotówce: ponowny zakup ROS/ROD wymaga nowego limitu 800+.</p>}
                     <div className="detail-links">
                       <div><a href={bond.detailsUrl} target="_blank" rel="noopener noreferrer">Warunki emisji <ArrowUpRight size={14} aria-hidden="true" /></a><a href={bond.emissionLetterUrl} target="_blank" rel="noopener noreferrer">List emisyjny <ArrowUpRight size={14} aria-hidden="true" /></a></div>
-                      <a className="purchase-link" href={bond.buyUrl} target="_blank" rel="noopener noreferrer">Przejdź do zakupu <ArrowRight size={15} aria-hidden="true" /></a>
                     </div>
                   </div>
                     </details>
@@ -272,7 +272,7 @@ const BondsCalculator = () => {
               </div>
             </div>
           </div>
-          <div className="results-notes"><p>Zysk netto dotyczy {formatCurrency(investment)} i okresu {horizonLabel}. Kolejność obligacji odpowiada oficjalnej ofercie.</p><p>To symulacja dla Twoich założeń. Przyszłe stopy procentowe i inflacja mogą zmienić wynik.</p></div>
+          <div className="results-notes"><p>Zysk netto dotyczy {formatCurrency(investment)} i okresu {horizonLabel}. Obligacje uporządkowano według typów emisji.</p><p>To symulacja dla Twoich założeń. Przyszłe stopy procentowe i inflacja mogą zmienić wynik.</p></div>
         </section>
 
         <div className="page-width">
@@ -286,7 +286,7 @@ const BondsCalculator = () => {
         </details>
         </div>
       </main>
-      <footer className="site-footer"><div className="page-width footer-inner"><div><strong>plBonds</strong><p>Niezależny kalkulator obligacji skarbowych.</p></div><div><p>Dane z {formatDate(OFFER.verifiedAt)}</p><a href="https://www.obligacjeskarbowe.pl/oferta/" target="_blank" rel="noopener noreferrer">Oferta na obligacjeskarbowe.pl <ArrowUpRight size={14} aria-hidden="true" /></a></div></div></footer>
+      <footer className="site-footer"><div className="page-width footer-inner"><div><strong>plBonds</strong><p>Niezależny kalkulator obligacji skarbowych.</p><a href="https://github.com/jacjacek/plBonds" target="_blank" rel="noopener noreferrer">Kod na GitHubie <ArrowUpRight size={13} aria-hidden="true" /></a></div><div><p>Dane z {formatDate(OFFER.verifiedAt)}</p><a href="https://www.obligacjeskarbowe.pl/oferta/" target="_blank" rel="noopener noreferrer">Oferta na obligacjeskarbowe.pl <ArrowUpRight size={14} aria-hidden="true" /></a></div></div></footer>
     </div>
   )
 }

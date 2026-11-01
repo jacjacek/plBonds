@@ -2,7 +2,7 @@
 
 Porównanie detalicznych obligacji skarbowych i symulacja wyniku po podatku oraz opłatach. Next.js, React, TypeScript; eksport statyczny do `out/`.
 
-Układ nawiązuje do [oficjalnej tabeli porównawczej](https://www.obligacjeskarbowe.pl/oferta/): jasne tło, prostokątne karty, kolorowe stawki i poziome porównanie z zachowaniem kolejności oferty. Formularz nad tabelą przelicza wynik po podatku i opłatach. Na telefonie karty układają się pionowo, a szczegóły i rozliczenie można rozwinąć. Fonty Poppins i Roboto są przechowywane lokalnie wraz z licencjami OFL, a ilustracja jest lokalnym plikiem SVG.
+plBonds ma własną identyfikację: ciepłe jasne tło, zielony akcent, typografię Geist i autorską ilustrację. Nagłówek wskazuje, że jest to projekt niezależny od Ministerstwa Finansów i banków. Formularz nad tabelą przelicza wynik po podatku i opłatach. Karty zawierają odnośniki do warunków na obligacjeskarbowe.pl; kalkulator nie prowadzi sprzedaży. Na telefonie karty układają się pionowo, a szczegóły i rozliczenie można rozwinąć.
 
 ## Uruchomienie
 
