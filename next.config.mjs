@@ -5,12 +5,7 @@ const nextConfig = {
     unoptimized: true,
   },
   trailingSlash: true, // pomaga z routingiem na Cloudflare
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+
 }
 
 export default nextConfig

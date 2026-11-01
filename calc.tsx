@@ -1,73 +1,33 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import type React from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import Image from "next/image"
+import { ArrowUpRight, ChevronDown, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-
-const TAX_RATE = 0.19
-const BOND_NOMINAL_VALUE = 100
-
-interface Bond {
-  name: string
-  series: string
-  type: string
-  displayName: string
-  interestRate: number
-  maturityMonths: number
-  variableRate: boolean
-  penalty: number
-  interestPayment: string
-  compound: boolean
-  margin: number
-  basedOnNBP?: boolean
-  basedOnInflation?: boolean
-  loseInterestOnEarlyWithdrawal?: boolean
-  purchasePrice: number
-  exchangePrice: number | string
-  advantages: string
-  typeLabel: string
-  interestDetails: string
-  interestPeriod: string
-  withdrawalFee: string
-  withdrawalConditions: string
-  earlyWithdrawalPossible: boolean
-  detailsUrl: string
-  buyUrl: string
-}
-
-interface PurchaseRound {
-  startMonth: number
-  endMonth: number
-  completed: boolean
-  capitalStart?: number
-  capitalEnd?: number
-}
-
-interface CalculationResult {
-  totalValue: number
-  profit: number
-  effectiveRate: number
-  purchaseRounds: PurchaseRound[]
-}
+import { BONDS, OFFER, isOfferCurrent } from "@/lib/bonds"
+import { addMonths, calculateReturn, MAX_INVESTMENT } from "@/lib/calculator"
 
 const BondsCalculator = () => {
   const [monthsToWithdraw, setMonthsToWithdraw] = useState(12)
-  const [inflation, setInflation] = useState(4.5)
-  const [nbpRate, setNbpRate] = useState(5.75)
+  const [inflation, setInflation] = useState(2.5)
+  const [nbpRate, setNbpRate] = useState(4)
   const [autoReinvest, setAutoReinvest] = useState(false)
-  const [excludeFamilyBonds, setExcludeFamilyBonds] = useState(false)
-  const [expandedBond, setExpandedBond] = useState<string | null>(null)
+  const [excludeFamilyBonds, setExcludeFamilyBonds] = useState(true)
   const [investment, setInvestment] = useState(100000)
+
+  const [purchaseDate, setPurchaseDate] = useState(OFFER.validFrom)
+  const [offerCurrent, setOfferCurrent] = useState(true)
+  useEffect(() => {
+    const check = () => setOfferCurrent(isOfferCurrent(new Date()))
+    check()
+    const timer = window.setInterval(check, 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   // Helpers for robust numeric inputs (support comma/dot, preserve mid-typing)
   const normalizeDecimal = (value: string): string => value.replace(/\s+/g, "").replace(",", ".")
-  const isPartialNumeric = (value: string): boolean => /^[0-9]*([,.][0-9]*)?$/.test(value)
+  const isPartialNumeric = (value: string): boolean => /^-?[0-9]*([,.][0-9]*)?$/.test(value.replace(/\s/g, ""))
 
   const handleEnterBlur = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -77,443 +37,24 @@ const BondsCalculator = () => {
   }
 
   // Raw input strings to avoid jumping to 0 during typing
-  const [investmentRaw, setInvestmentRaw] = useState<string>(String(investment))
+  const [investmentRaw, setInvestmentRaw] = useState<string>(investment.toLocaleString("pl-PL", { maximumFractionDigits: 2 }))
   const [inflationRaw, setInflationRaw] = useState<string>(String(inflation).replace(".", ","))
   const [nbpRateRaw, setNbpRateRaw] = useState<string>(String(nbpRate).replace(".", ","))
 
-  const bonds: Bond[] = [
-    {
-      name: "OTS",
-      series: "OTS0126",
-      displayName: "Obligacje 3-miesięczne OTS",
-      type: "3-miesięczne",
-      typeLabel: "STAŁOPROCENTOWE",
-      interestRate: 2.75,
-      maturityMonths: 3,
-      variableRate: false,
-      penalty: 0,
-      loseInterestOnEarlyWithdrawal: true,
-      interestPayment: "at_end",
-      compound: false,
-      margin: 0,
-      purchasePrice: 100.0,
-      exchangePrice: 100.0,
-      advantages: "Zysk określony z góry, nabywca zna wysokość odsetek w dniu zakupu",
-      interestDetails: "0,69 zł",
-      interestPeriod: "01.09.2025-01.12.2025",
-      withdrawalFee: "brak",
-      withdrawalConditions: "3 miesiące od dnia zakupu",
-      earlyWithdrawalPossible: false,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-miesieczne-ots/ots0126/",
-      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-miesieczne-ots/ots0126/"
-    },
-    {
-      name: "ROR",
-      series: "ROR1026",
-      displayName: "Obligacje roczne ROR",
-      type: "roczne",
-      typeLabel: "ZMIENNOPROCENTOWE",
-      interestRate: 4.75,
-      maturityMonths: 12,
-      variableRate: true,
-      basedOnNBP: true,
-      penalty: 0.5,
-      margin: 0.0,
-      interestPayment: "monthly",
-      compound: false,
-      purchasePrice: 100.0,
-      exchangePrice: 99.9,
-      advantages: "Regularny (co miesiąc) dopływ gotówki z wypłat odsetek",
-      interestDetails: "Naliczane od wartości nominalnej, wypłacane miesięcznie",
-      interestPeriod: "01.10.2025 - 30.11.2025",
-      withdrawalFee: "50 gr",
-      withdrawalConditions: "Rok od dnia zakupu",
-      earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-roczne-ror/ror102/",
-      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-roczne-ror/ror102/"
-    },
-    {
-      name: "DOR",
-      series: "DOR1027",
-      displayName: "Obligacje 2-letnie DOR",
-      type: "2-letnie",
-      typeLabel: "ZMIENNOPROCENTOWE",
-      interestRate: 4.9,
-      maturityMonths: 24,
-      variableRate: true,
-      basedOnNBP: true,
-      penalty: 0.7,
-      margin: 0.15,
-      interestPayment: "monthly",
-      compound: false,
-      purchasePrice: 100.0,
-      exchangePrice: 99.9,
-      advantages: "Regularny (co miesiąc) dopływ gotówki z wypłat odsetek",
-      interestDetails: "Naliczane od wartości nominalnej, wypłacane miesięcznie",
-      interestPeriod: "01.10.2025 - 30.11.2025",
-      withdrawalFee: "70 gr",
-      withdrawalConditions: "Dwa lata od dnia zakupu",
-      earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-2-letnie-dor/dor1027/",
-      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-2-letnie-dor/dor1027/"
-    },
-    {
-      name: "TOS",
-      series: "TOS1028",
-      displayName: "Obligacje 3-letnie TOS",
-      type: "3-letnie",
-      typeLabel: "STAŁOPROCENTOWE",
-      interestRate: 5.15,
-      maturityMonths: 36,
-      variableRate: false,
-      penalty: 1.0,
-      interestPayment: "at_end",
-      compound: true,
-      margin: 0,
-      purchasePrice: 100.0,
-      exchangePrice: 99.9,
-      advantages: "Klient wie, jakie odsetki otrzyma po trzech latach",
-      interestDetails: "Naliczane od wartości nominalnej, kapitalizowane rocznie, wypłacane w dniu wykupu",
-      interestPeriod: "01.10.2025 - 01.10.2028",
-      withdrawalFee: "1 zł",
-      withdrawalConditions: "Trzy lata od dnia zakupu",
-      earlyWithdrawalPossible: false,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-letnie-tos/tos1028/",
-      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-3-letnie-tos/tos1028/"
-    },
-    {
-      name: "COI",
-      series: "COI1029",
-      displayName: "Obligacje 4-letnie COI",
-      type: "4-letnie",
-      typeLabel: "INDEKSOWANE INFLACJĄ",
-      interestRate: 5.5,
-      maturityMonths: 48,
-      variableRate: true,
-      basedOnInflation: true,
-      penalty: 2.0,
-      margin: 1.5,
-      interestPayment: "yearly",
-      compound: false,
-      purchasePrice: 100.0,
-      exchangePrice: "-",
-      advantages: "Stała marża – od drugiego okresu indeksowane inflacją",
-      interestDetails: "Naliczane od wartości nominalnej, wypłacane rocznie",
-      interestPeriod: "01.10.2025 - 01.10.2026",
-      withdrawalFee: "2 zł",
-      withdrawalConditions: "Cztery lata od dnia zakupu",
-      earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-4-letnie-coi/coi1029/",
-      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-4-letnie-coi/coi1029/"
-    },
-    {
-      name: "ROS",
-      series: "ROS1031",
-      displayName: "Obligacje 6-letnie ROS",
-      type: "6-letnie",
-      typeLabel: "INDEKSOWANE INFLACJĄ",
-      interestRate: 5.7,
-      maturityMonths: 72,
-      variableRate: true,
-      basedOnInflation: true,
-      penalty: 2.0,
-      margin: 1.75,
-      interestPayment: "at_end",
-      compound: true,
-      purchasePrice: 100.0,
-      exchangePrice: "-",
-      advantages:
-        "Preferencyjne oprocentowanie, stała marża, od drugiego okresu indeksowane inflacją, coroczna kapitalizacja",
-      interestDetails: "Naliczane od wartości nominalnej, kapitalizowane rocznie",
-      interestPeriod: "01.10.2025 - 01.10.2026",
-      withdrawalFee: "2 zł",
-      withdrawalConditions: "Sześć lat od dnia zakupu",
-      earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-6-letnie-ros/ros1031/",
-      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-6-letnie-ros/ros1031/"
-    },
-    {
-      name: "EDO",
-      series: "EDO1035",
-      displayName: "Obligacje 10-letnie EDO",
-      type: "10-letnie",
-      typeLabel: "INDEKSOWANE INFLACJĄ",
-      interestRate: 6.0,
-      maturityMonths: 120,
-      variableRate: true,
-      basedOnInflation: true,
-      penalty: 3.0,
-      margin: 2.0,
-      interestPayment: "at_end",
-      compound: true,
-      purchasePrice: 100.0,
-      exchangePrice: 99.9,
-      advantages:
-        "Stała marża – od drugiego okresu indeksowane inflacją, coroczna kapitalizacja znacznie zwiększa zyskowność",
-      interestDetails: "Naliczane od wartości nominalnej, kapitalizowane rocznie",
-      interestPeriod: "01.10.2025 - 01.10.2026",
-      withdrawalFee: "3 zł",
-      withdrawalConditions: "Dziesięć lat od dnia zakupu",
-      earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-10-letnie-edo/edo1035/",
-      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-10-letnie-edo/edo1035/"
-    },
-    {
-      name: "ROD",
-      series: "ROD1037",
-      displayName: "Obligacje 12-letnie ROD",
-      type: "12-letnie",
-      typeLabel: "INDEKSOWANE INFLACJĄ",
-      interestRate: 6.25,
-      maturityMonths: 144,
-      variableRate: true,
-      basedOnInflation: true,
-      penalty: 3.0,
-      margin: 2.25,
-      interestPayment: "at_end",
-      compound: true,
-      purchasePrice: 100.0,
-      exchangePrice: "-",
-      advantages:
-        "Preferencyjne oprocentowanie, stała marża, od drugiego okresu indeksowane inflacją, coroczna kapitalizacja znacznie zwiększa zyskowność",
-      interestDetails: "Naliczane od wartości nominalnej, kapitalizowane rocznie",
-      interestPeriod: "01.10.2025 - 01.10.2026",
-      withdrawalFee: "3 zł",
-      withdrawalConditions: "Dwanaście lat od dnia zakupu",
-      earlyWithdrawalPossible: true,
-      detailsUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-12-letnie-rod/rod1037/",
-      buyUrl: "https://www.obligacjeskarbowe.pl/oferta-obligacji/obligacje-12-letnie-rod/rod1037/"
-    },
-  ]
-
-  const calculateReturn = (bond: Bond): CalculationResult => {
-    const numberOfBonds = investment / BOND_NOMINAL_VALUE
-    let totalValue = investment
-    let totalInterest = 0
-    let purchaseRounds: PurchaseRound[] = []
-
-    if (monthsToWithdraw < 1) {
-      return { totalValue: investment, profit: 0, effectiveRate: 0, purchaseRounds: [] }
-    }
-
-    if (!autoReinvest) {
-      const effectiveMonths = Math.min(monthsToWithdraw, bond.maturityMonths)
-
-      if (bond.loseInterestOnEarlyWithdrawal && effectiveMonths < bond.maturityMonths) {
-        return {
-          totalValue: investment,
-          profit: 0,
-          effectiveRate: 0,
-          purchaseRounds: [{ startMonth: 0, endMonth: effectiveMonths, completed: false }],
-        }
-      }
-
-      if (bond.basedOnNBP) {
-        const monthlyRate = (nbpRate + bond.margin) / 12 / 100
-        totalInterest = investment * monthlyRate * effectiveMonths
-        purchaseRounds = [
-          { startMonth: 0, endMonth: effectiveMonths, completed: effectiveMonths >= bond.maturityMonths },
-        ]
-      } else if (bond.basedOnInflation) {
-        const years = effectiveMonths / 12
-        const fullYears = Math.floor(years)
-        const remainingMonths = (years - fullYears) * 12
-
-        let currentValue = investment
-
-        if (years >= 1) {
-          const firstYearRate = bond.interestRate / 100
-          if (bond.compound) {
-            currentValue = currentValue * (1 + firstYearRate)
-            totalInterest += investment * firstYearRate
-          } else {
-            totalInterest += investment * firstYearRate
-          }
-        } else {
-          const firstYearRate = bond.interestRate / 100
-          const partialYearInterest = investment * firstYearRate * years
-          totalInterest += partialYearInterest
-          if (bond.compound) {
-            currentValue = investment + partialYearInterest
-          }
-        }
-
-        if (fullYears > 1) {
-          const yearlyRate = (inflation + bond.margin) / 100
-          for (let i = 1; i < fullYears; i++) {
-            if (bond.compound) {
-              const yearInterest = currentValue * yearlyRate
-              currentValue += yearInterest
-              totalInterest += yearInterest
-            } else {
-              totalInterest += investment * yearlyRate
-            }
-          }
-        }
-
-        if (remainingMonths > 0 && fullYears >= 1) {
-          const yearlyRate = (inflation + bond.margin) / 100
-          if (bond.compound) {
-            const partialYearInterest = currentValue * yearlyRate * (remainingMonths / 12)
-            currentValue += partialYearInterest
-            totalInterest += partialYearInterest
-          } else {
-            const partialYearInterest = investment * yearlyRate * (remainingMonths / 12)
-            totalInterest += partialYearInterest
-          }
-        }
-
-        if (bond.compound) {
-          totalValue = currentValue
-        } else {
-          totalValue = investment + totalInterest
-        }
-
-        purchaseRounds = [
-          {
-            startMonth: 0,
-            endMonth: effectiveMonths,
-            completed: effectiveMonths >= bond.maturityMonths,
-          },
-        ]
-      } else if (bond.compound) {
-        const years = effectiveMonths / 12
-        const fullYears = Math.floor(years)
-        let currentValue = investment
-
-        for (let i = 0; i < fullYears; i++) {
-          currentValue = currentValue * (1 + bond.interestRate / 100)
-        }
-
-        const remainingMonths = (years - fullYears) * 12
-        if (remainingMonths > 0 && fullYears < bond.maturityMonths / 12) {
-          const partialYearInterest = currentValue * (bond.interestRate / 100) * (remainingMonths / 12)
-          currentValue += partialYearInterest
-        }
-
-        totalValue = currentValue
-        totalInterest = totalValue - investment
-        purchaseRounds = [
-          {
-            startMonth: 0,
-            endMonth: effectiveMonths,
-            completed: effectiveMonths >= bond.maturityMonths,
-          },
-        ]
-      } else {
-        const rate = bond.interestRate / 100
-        const years = effectiveMonths / 12
-        totalInterest = investment * rate * years
-        purchaseRounds = [
-          {
-            startMonth: 0,
-            endMonth: effectiveMonths,
-            completed: effectiveMonths >= bond.maturityMonths,
-          },
-        ]
-      }
-
-      const tax = totalInterest * TAX_RATE
-      const netInterest = totalInterest - tax
-
-      let penalty = 0
-      if (effectiveMonths < bond.maturityMonths && bond.penalty > 0) {
-        penalty = numberOfBonds * bond.penalty
-      }
-
-      totalValue = investment + netInterest - penalty
-      const profit = totalValue - investment
-      const effectiveRate = monthsToWithdraw > 0 ? (profit / investment) * 100 * (12 / monthsToWithdraw) : 0
-
-      return { totalValue, profit, effectiveRate, purchaseRounds }
-    } else {
-      let currentCapital = investment
-      let monthsRemaining = monthsToWithdraw
-      let currentMonth = 0
-      purchaseRounds = []
-
-      while (monthsRemaining > 0) {
-        const roundMonths = Math.min(monthsRemaining, bond.maturityMonths)
-        const isPartialRound = roundMonths < bond.maturityMonths
-
-        let roundInterest = 0
-        let roundValue = currentCapital
-
-        if (bond.basedOnNBP) {
-          const monthlyRate = (nbpRate + bond.margin) / 12 / 100
-          roundInterest = currentCapital * monthlyRate * roundMonths
-        } else if (bond.compound) {
-          const years = roundMonths / 12
-          const fullYears = Math.floor(years)
-          let tempValue = currentCapital
-
-          for (let i = 0; i < fullYears; i++) {
-            tempValue = tempValue * (1 + bond.interestRate / 100)
-          }
-
-          const remainingMonths = (years - fullYears) * 12
-          if (remainingMonths > 0 && fullYears < bond.maturityMonths / 12) {
-            const partialYearInterest = tempValue * (bond.interestRate / 100) * (remainingMonths / 12)
-            tempValue += partialYearInterest
-          }
-
-          roundValue = tempValue
-          roundInterest = roundValue - currentCapital
-        } else {
-          const rate = bond.interestRate / 100
-          const years = roundMonths / 12
-          roundInterest = currentCapital * rate * years
-        }
-
-        const roundTax = roundInterest * TAX_RATE
-        let roundNetInterest = roundInterest - roundTax
-
-        let roundPenalty = 0
-        if (isPartialRound && bond.penalty > 0) {
-          const bondsInRound = currentCapital / BOND_NOMINAL_VALUE
-          roundPenalty = bondsInRound * bond.penalty
-        }
-
-        if (bond.loseInterestOnEarlyWithdrawal && isPartialRound) {
-          roundNetInterest = 0
-        }
-
-        const roundFinalValue = currentCapital + roundNetInterest - roundPenalty
-        totalInterest += roundNetInterest
-
-        purchaseRounds.push({
-          startMonth: currentMonth,
-          endMonth: currentMonth + roundMonths,
-          completed: !isPartialRound,
-          capitalStart: currentCapital,
-          capitalEnd: roundFinalValue,
-        })
-
-        currentCapital = roundFinalValue
-        monthsRemaining -= roundMonths
-        currentMonth += roundMonths
-      }
-
-      totalValue = currentCapital
-      const profit = totalValue - investment
-      const effectiveRate = monthsToWithdraw > 0 ? (profit / investment) * 100 * (12 / monthsToWithdraw) : 0
-
-      return { totalValue, profit, effectiveRate, purchaseRounds }
-    }
-  }
-
   const results = useMemo(() => {
     const filteredBonds = excludeFamilyBonds
-      ? bonds.filter((bond) => bond.name !== "ROD" && bond.name !== "ROS")
-      : bonds
+      ? BONDS.filter((bond) => !bond.familyOnly)
+      : BONDS
 
     return filteredBonds
       .map((bond) => ({
         ...bond,
-        ...calculateReturn(bond),
+        interestPeriod: [new Date(`${purchaseDate}T00:00:00Z`), addMonths(new Date(`${purchaseDate}T00:00:00Z`), bond.variableRate ? (bond.basedOnNBP ? 1 : 12) : bond.maturityMonths)]
+          .map((date) => new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC" }).format(date)).join(" – "),
+        ...calculateReturn(bond, { investment, months: monthsToWithdraw, inflation, nbpRate, autoReinvest, purchaseDate }),
       }))
       .sort((a, b) => b.profit - a.profit)
-  }, [monthsToWithdraw, inflation, nbpRate, autoReinvest, excludeFamilyBonds])
+  }, [investment, monthsToWithdraw, inflation, nbpRate, autoReinvest, excludeFamilyBonds, purchaseDate])
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("pl-PL", {
@@ -524,328 +65,228 @@ const BondsCalculator = () => {
     }).format(value)
   }
 
+  const term = (months: number) => ({ 3: "3 miesiące", 12: "1 rok", 24: "2 lata", 36: "3 lata", 48: "4 lata", 72: "6 lat", 120: "10 lat", 144: "12 lat" } as Record<number, string>)[months] ?? `${months} mies.`
+  const formatDate = (date: string) => new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${date}T00:00:00Z`))
+  const money = (value: number) => formatCurrency(value).replace(/\s*zł$/, "")
+  const leader = results[0]
+  const comparisonScroll = useRef<HTMLDivElement>(null)
+  const offerOrder = ["OTS", "ROR", "DOR", "TOS", "COI", "EDO", "ROS", "ROD"]
+  const comparisonResults = [...results].sort((a, b) => offerOrder.indexOf(a.name) - offerOrder.indexOf(b.name))
+  const scrollComparison = (direction: number) => {
+    comparisonScroll.current?.scrollBy({ left: direction * 224, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" })
+  }
+  const years = monthsToWithdraw / 12
+  const horizonLabel = monthsToWithdraw % 12 === 0
+    ? `${years} ${years === 1 ? "rok" : years < 5 ? "lata" : "lat"}`
+    : `${monthsToWithdraw} mies.`
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#0033CC] flex items-center justify-center text-white font-bold text-xl">
-              OS
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Obligacje Skarbowe</h1>
-              <p className="text-sm text-gray-600">Kalkulator porównawczy</p>
-            </div>
+    <div className="bonds-app">
+      <header className="site-header">
+        <div className="page-width header-inner">
+          <a className="wordmark" href="#" aria-label="plBonds — kalkulator obligacji">
+            <span className="brand-icon" aria-hidden="true"><i /><i /><i /></span><span className="brand-name">plBonds</span>
+          </a>
+          <nav className="header-nav" aria-label="Nawigacja główna">
+            <a href="#kalkulator" className="is-active">Kalkulator</a>
+            <a href="#porownanie">Porównanie</a>
+            <a href="#zasady">Jak liczymy?</a>
+          </nav>
+          <a className="source-link" href="https://www.obligacjeskarbowe.pl/oferta/" target="_blank" rel="noopener noreferrer">Źródło danych <ArrowUpRight size={15} aria-hidden="true" /></a>
+        </div>
+      </header>
+
+      <main id="kalkulator">
+        <section className="page-intro page-width" aria-labelledby="page-title">
+          <div className="intro-text">
+            <p className="independent-label">Niezależny kalkulator obligacji skarbowych</p>
+            <h1 id="page-title">Policz zysk z obligacji.</h1>
+            <p className="intro-copy">Porównaj ofertę dla swojej kwoty i okresu oszczędzania. Zobacz wynik po podatku i opłatach.</p>
+            <p className="independence-note">Projekt niezależny od Ministerstwa Finansów i banków.</p>
           </div>
-        </div>
-      </div>
+          <Image className="comparison-illustration" src="/bond-notes.svg" width={280} height={190} alt="" unoptimized priority />
+        </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        <div className="space-y-3">
-          <h2 className="text-4xl font-bold text-gray-900">Tabela porównawcza</h2>
-          <p className="text-lg text-gray-600 max-w-3xl">
-            Obligacje skarbowe – oprocentowanie, rodzaje. Zastanawiasz się, jakie wybrać? Poznaj rodzaje obligacji
-            skarbowych. Porównaj aktualną ofertę obligacji Skarbu Państwa i wybierz najlepszy dla siebie wariant
-          </p>
-        </div>
-
-        <Card className="border shadow-sm rounded-none">
-          <CardContent className="p-6 space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="investment" className="text-base font-semibold">
-                Kwota inwestycji (PLN)
-              </Label>
-              <Input
-                id="investment"
-                type="text"
-                inputMode="decimal"
-                value={investmentRaw}
-                onChange={(e) => {
-                  const raw = e.target.value
-                  if (raw === "" || isPartialNumeric(raw)) {
-                    setInvestmentRaw(raw)
-                  }
-                }}
-                onKeyDown={handleEnterBlur}
-                onBlur={() => {
-                  const normalized = normalizeDecimal(investmentRaw)
-                  const parsed = Number.parseFloat(normalized)
-                  if (Number.isFinite(parsed)) {
-                    const clamped = Math.max(100, parsed)
-                    setInvestment(clamped)
-                    setInvestmentRaw(String(clamped).replace(".", ","))
-                  } else {
-                    setInvestmentRaw(String(investment).replace(".", ","))
-                  }
-                }}
-                className="rounded-none text-lg font-semibold"
-              />
-              <p className="text-sm text-gray-600">Minimalna kwota: 100 PLN</p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">Okres inwestycji</Label>
-                <Badge variant="secondary" className="text-base font-semibold px-4 py-1 rounded-none">
-                  {monthsToWithdraw}{" "}
-                  {monthsToWithdraw === 1 ? "miesiąc" : monthsToWithdraw < 5 ? "miesiące" : "miesięcy"}
-                </Badge>
-              </div>
-              <Slider
-                value={[monthsToWithdraw]}
-                onValueChange={(value) => setMonthsToWithdraw(value[0])}
-                min={1}
-                max={144}
-                step={1}
-                className="w-full"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-none border bg-gray-50">
-              <div>
-                <Label htmlFor="reinvest" className="text-base font-medium cursor-pointer">
-                  Automatyczne reinwestowanie
-                </Label>
-                <p className="text-sm text-gray-600">Kupuj kolejne emisje po wykupie</p>
-              </div>
-              <Switch id="reinvest" checked={autoReinvest} onCheckedChange={setAutoReinvest} />
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-none border bg-gray-50">
-              <div>
-                <Label htmlFor="excludeFamily" className="text-base font-medium cursor-pointer">
-                  Wyklucz obligacje rodzinne (ROD, ROS)
-                </Label>
-                <p className="text-sm text-gray-600">Obligacje ROD i ROS są dostępne tylko dla rodzin z dziećmi</p>
-              </div>
-              <Switch id="excludeFamily" checked={excludeFamilyBonds} onCheckedChange={setExcludeFamilyBonds} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="inflation" className="text-sm font-medium">
-                  Inflacja roczna (%)
-                </Label>
-                <Input
-                  id="inflation"
-                  type="text"
-                  inputMode="decimal"
-                  value={inflationRaw}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    if (raw === "" || isPartialNumeric(raw)) {
-                      setInflationRaw(raw)
-                    }
-                  }}
+        <div className="page-width calculator-workspace">
+          <section className="scenario-panel" aria-labelledby="scenario-title">
+            <div className="panel-heading"><h2 id="scenario-title">Oblicz zysk z obligacji</h2><span>Wyniki przeliczają się automatycznie</span></div>
+            <div className={`field investment-field ${investmentRaw.replace(/\s/g, "").length > 8 ? "is-large" : ""}`}>
+              <label htmlFor="investment">Kwota inwestycji</label>
+              <div className="input-wrap">
+                <input id="investment" aria-label="Kwota inwestycji (PLN)" type="text" inputMode="decimal" value={investmentRaw}
+                  onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setInvestmentRaw(e.target.value) }}
                   onKeyDown={handleEnterBlur}
                   onBlur={() => {
-                    const normalized = normalizeDecimal(inflationRaw)
-                    const parsed = Number.parseFloat(normalized)
+                    const parsed = Number.parseFloat(normalizeDecimal(investmentRaw))
                     if (Number.isFinite(parsed)) {
-                      setInflation(parsed)
-                      setInflationRaw(String(parsed).replace(".", ","))
-                    } else {
-                      setInflationRaw(String(inflation).replace(".", ","))
-                    }
-                  }}
-                  className="rounded-none"
-                />
+                      const value = Math.round(Math.min(MAX_INVESTMENT, Math.max(100, parsed)) * 100) / 100
+                      setInvestment(value)
+                      setInvestmentRaw(value.toLocaleString("pl-PL", { maximumFractionDigits: 2 }))
+                    } else setInvestmentRaw(String(investment).replace(".", ","))
+                  }} />
+                <span className="input-unit">zł</span>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="nbpRate" className="text-sm font-medium">
-                  Stopa referencyjna NBP (%)
-                </Label>
-                <Input
-                  id="nbpRate"
-                  type="text"
-                  inputMode="decimal"
-                  value={nbpRateRaw}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    if (raw === "" || isPartialNumeric(raw)) {
-                      setNbpRateRaw(raw)
-                    }
-                  }}
-                  onKeyDown={handleEnterBlur}
-                  onBlur={() => {
-                    const normalized = normalizeDecimal(nbpRateRaw)
-                    const parsed = Number.parseFloat(normalized)
-                    if (Number.isFinite(parsed)) {
-                      setNbpRate(parsed)
-                      setNbpRateRaw(String(parsed).replace(".", ","))
-                    } else {
-                      setNbpRateRaw(String(nbpRate).replace(".", ","))
-                    }
-                  }}
-                  className="rounded-none"
-                />
+              <p className="field-hint">Jedna obligacja kosztuje 100 zł.</p>
+            </div>
+
+            <div className="field horizon-field">
+              <div className="field-line"><label htmlFor="horizon">Okres inwestycji</label><span className="horizon-value">{horizonLabel}</span></div>
+              <Slider id="horizon" aria-label="Okres inwestycji w miesiącach" aria-valuetext={horizonLabel} className="horizon-slider"
+                value={[monthsToWithdraw]} onValueChange={(value) => setMonthsToWithdraw(value[0])} min={1} max={144} step={1} />
+              <div className="horizon-presets" aria-label="Szybki wybór okresu">
+                {[{ months: 12, label: "1 rok" }, { months: 36, label: "3 lata" }, { months: 120, label: "10 lat" }].map((preset) => (
+                  <button key={preset.months} type="button" onClick={() => setMonthsToWithdraw(preset.months)} aria-pressed={monthsToWithdraw === preset.months}>{preset.label}</button>
+                ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="bg-white border rounded-none shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="inline-flex min-w-full">
-              <div className="flex-shrink-0 w-64 border-r bg-gray-50">
-                <div className="h-80 border-b flex items-center justify-center">
-                  <div className="text-center px-4">
-                    <p className="text-sm text-gray-500 mb-2">Porównaj obligacje</p>
-                  </div>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Cena zakupu</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Odsetki</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Okres oprocentowania</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Cena zamiany</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Wcześniejszy wykup</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Opłata za wykup</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Warunki wykupu</p>
-                </div>
-                <div className="border-b p-4 h-32 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Zalety</p>
-                </div>
-                <div className="p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Zysk po {monthsToWithdraw} mies.</p>
-                </div>
-              </div>
-
-              {results.map((bond, idx) => (
-                <div key={bond.name} className={`flex-shrink-0 w-64 ${idx < results.length - 1 ? "border-r" : ""}`}>
-                  <div className="h-80 border-b p-6 flex flex-col justify-between bg-white">
-                    <div className="space-y-3">
-                      <div className="bg-green-50 border-2 border-green-500 p-3 rounded-none">
-                        <p className="text-xs text-green-700 font-semibold mb-1">ZYSK PO {monthsToWithdraw} MIES.</p>
-                        <p className="text-2xl font-bold text-green-600">{formatCurrency(bond.profit)}</p>
-                      </div>
-                      <div
-                        className={`text-5xl font-bold ${
-                          bond.typeLabel === "STAŁOPROCENTOWE"
-                            ? "text-red-600"
-                            : bond.typeLabel === "ZMIENNOPROCENTOWE"
-                              ? "text-blue-600"
-                              : "text-purple-600"
-                        }`}
-                      >
-                        {bond.interestRate.toFixed(2)}%
-                      </div>
-                      <h3 className="text-base font-bold text-gray-900 leading-tight">{bond.displayName}</h3>
-                      <Badge
-                        variant="outline"
-                        className={`font-semibold text-xs rounded-none ${
-                          bond.typeLabel === "STAŁOPROCENTOWE"
-                            ? "text-red-600 border-red-600 bg-red-50"
-                            : bond.typeLabel === "ZMIENNOPROCENTOWE"
-                              ? "text-blue-600 border-blue-600 bg-blue-50"
-                              : "text-purple-600 border-purple-600 bg-purple-50"
-                        }`}
-                      >
-                        {bond.typeLabel}
-                      </Badge>
-                      <p className="text-xs text-gray-600">
-                        <span className="font-semibold">Seria:</span> {bond.series}
-                      </p>
+            <details className="advanced-settings">
+              <summary><SlidersHorizontal size={18} aria-hidden="true" /><span>Dostosuj założenia<small>Inflacja {inflation.toLocaleString("pl-PL")}%, stopa NBP {nbpRate.toLocaleString("pl-PL")}%</small></span><ChevronDown size={18} aria-hidden="true" /></summary>
+              <div className="advanced-body">
+                <div className="field-pair">
+                  <div className="field">
+                    <label htmlFor="inflation">Inflacja roczna</label>
+                    <div className="input-wrap">
+                      <input id="inflation" aria-label="Założona przyszła inflacja roczna (%)" type="text" inputMode="decimal" value={inflationRaw}
+                        onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setInflationRaw(e.target.value) }}
+                        onKeyDown={handleEnterBlur} onBlur={() => {
+                          const parsed = Number.parseFloat(normalizeDecimal(inflationRaw))
+                          if (Number.isFinite(parsed)) {
+                            const value = Math.min(100, Math.max(-20, parsed))
+                            setInflation(value); setInflationRaw(String(value).replace(".", ","))
+                          } else setInflationRaw(String(inflation).replace(".", ","))
+                        }} />
+                      <span className="input-unit">%</span>
                     </div>
                   </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center">{bond.purchasePrice.toFixed(2)} zł</p>
+                  <div className="field">
+                    <label htmlFor="nbpRate">Stopa NBP</label>
+                    <div className="input-wrap">
+                      <input id="nbpRate" aria-label="Założona przyszła stopa NBP (%)" type="text" inputMode="decimal" value={nbpRateRaw}
+                        onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setNbpRateRaw(e.target.value) }}
+                        onKeyDown={handleEnterBlur} onBlur={() => {
+                          const parsed = Number.parseFloat(normalizeDecimal(nbpRateRaw))
+                          if (Number.isFinite(parsed)) {
+                            const value = Math.min(100, Math.max(0, parsed))
+                            setNbpRate(value); setNbpRateRaw(String(value).replace(".", ","))
+                          } else setNbpRateRaw(String(nbpRate).replace(".", ","))
+                        }} />
+                      <span className="input-unit">%</span>
+                    </div>
                   </div>
+                  <p className="field-hint">Twoje założenia dla kolejnych okresów odsetkowych.</p>
+                </div>
 
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-xs text-center leading-relaxed">{bond.interestDetails}</p>
+                <div className="field date-field">
+                  <label htmlFor="purchaseDate">Data zakupu</label>
+                  <input id="purchaseDate" type="date" min={OFFER.validFrom} max={OFFER.validTo} value={purchaseDate}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      if (value >= OFFER.validFrom && value <= OFFER.validTo) setPurchaseDate(value)
+                    }} />
+                </div>
+
+                <div className="scenario-options">
+                  <div className="option-row">
+                    <label htmlFor="reinvest"><span>Reinwestowanie po wykupie</span><small>Kolejny zakup po terminowym wykupie.</small></label>
+                    <input className="scenario-toggle" type="checkbox" role="switch" id="reinvest" checked={autoReinvest} onChange={(e) => setAutoReinvest(e.target.checked)} />
                   </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-xs text-center">{bond.interestPeriod}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center">
-                      {typeof bond.exchangePrice === "number"
-                        ? `${bond.exchangePrice.toFixed(2)} zł`
-                        : bond.exchangePrice}
-                    </p>
-                  </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center">{bond.earlyWithdrawalPossible ? "Tak" : "Nie"}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm text-center">{bond.withdrawalFee}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-xs text-center">{bond.withdrawalConditions}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-32 flex items-center">
-                    <p className="text-xs text-gray-700 text-center leading-relaxed">{bond.advantages}</p>
-                  </div>
-
-                  <div className="px-4 pb-4 pt-4 space-y-2">
-                    <a
-                      href={bond.buyUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full inline-flex items-center justify-center bg-[#0033CC] hover:bg-[#0029AA] text-white font-semibold rounded-none h-10"
-                    >
-                      Kup
-                    </a>
-                    <a
-                      href={bond.detailsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-center text-sm text-[#0033CC] hover:underline font-medium"
-                    >
-                      Szczegóły →
-                    </a>
+                  <div className="option-row">
+                    <label htmlFor="includeFamily"><span>Uwzględnij obligacje rodzinne</span><small>ROS i ROD · wymagany limit 800+.</small></label>
+                    <input className="scenario-toggle" type="checkbox" role="switch" id="includeFamily" checked={!excludeFamilyBonds} onChange={(e) => setExcludeFamilyBonds(!e.target.checked)} />
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </details>
+          </section>
+          <section className="outcome-panel" aria-labelledby="outcome-title">
+            <h2 id="outcome-title">Najwyższy zysk w tym scenariuszu</h2>
+            <span className="outcome-bond">{leader.name} · {term(leader.maturityMonths)}</span>
+            <p className="outcome-profit">{money(leader.profit)}<span> zł</span></p>
+            <span className="outcome-caption">netto po {monthsToWithdraw} mies.</span>
+          </section>
         </div>
 
-        <Card className="border shadow-sm bg-blue-50 rounded-none">
-          <CardContent className="p-6">
-            <h4 className="text-lg font-semibold mb-4 text-gray-900">Informacje dodatkowe</h4>
-            <div className="space-y-2 text-sm text-gray-700">
-              <p>• Wszystkie obliczenia uwzględniają podatek Belki (19%)</p>
-              <p>• Inwestycja bazowa: {formatCurrency(investment)}</p>
-              <p>
-                • Obligacje zmiennoprocentowe (ROR, DOR) dostosowują się do stopy referencyjnej NBP (obecnie{" "}
-                {nbpRate.toFixed(2)}%)
-              </p>
-              <p>
-                • Obligacje indeksowane inflacją (COI, ROS, EDO, ROD) chronią przed inflacją (założona: {inflation}%)
-              </p>
-              {autoReinvest && (
-                <p className="font-medium">
-                  • Z włączonym reinwestowaniem, po wykupie obligacji całość kapitału jest automatycznie inwestowana w
-                  kolejną emisję
-                </p>
-              )}
-              {excludeFamilyBonds && (
-                <p className="font-medium">• Obligacje rodzinne (ROD, ROS) zostały wyłączone z obliczeń</p>
-              )}
+        <section className="results-section page-width" id="porownanie" aria-labelledby="results-title">
+          <h2 className="comparison-title" id="results-title">Porównanie obligacji</h2>
+          <div className="results-toolbar">
+            <div className={`offer-meta ${!offerCurrent ? "offer-archived" : ""}`} role="status">
+              <span className="offer-label">Oferta: {OFFER.label}</span><span>Sprzedaż {formatDate(OFFER.validFrom)} – {formatDate(OFFER.validTo)}</span>
+              {!offerCurrent && <strong>Ta oferta jest archiwalna. Sprawdź aktualne warunki przed zakupem.</strong>}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="comparison-navigation"><span>Przesuń tabelę</span><button type="button" onClick={() => scrollComparison(-1)} aria-label="Poprzednie obligacje"><ChevronLeft size={23} aria-hidden="true" /></button><button type="button" onClick={() => scrollComparison(1)} aria-label="Następne obligacje"><ChevronRight size={23} aria-hidden="true" /></button></div>
+          </div>
+          <div className="comparison-surface">
+            <div className="comparison-labels" aria-hidden="true"><div className="comparison-label-header" /><div className="comparison-label profit-cell">Zysk netto</div><div className="comparison-label">Łączne środki netto</div><div className="comparison-label">Cena zakupu</div><div className="comparison-label rate-cell">Oprocentowanie</div><div className="comparison-label">Wypłata odsetek</div><div className="comparison-label fee-cell">Opłata za wcześniejszy wykup</div><div className="comparison-label actions-cell" /></div>
+            <div className="comparison-scroller" ref={comparisonScroll} tabIndex={0} role="region" aria-label="Tabela porównawcza obligacji — przewijana poziomo">
+              <div className="bond-list">
+                {comparisonResults.map((bond) => (
+                  <article key={bond.name} data-testid={`bond-${bond.name}`} className={`bond-row ${bond.name === leader.name && bond.profit > 0 ? "leading-result" : ""} ${bond.basedOnInflation ? "bond-inflation" : bond.basedOnNBP ? "bond-variable" : "bond-fixed"} ${bond.familyOnly ? "bond-family" : ""} ${money(bond.profit).length > 12 ? "long-result" : ""}`} aria-labelledby={`title-${bond.name}`}>
+                    <div className="bond-card-header">
+                      <div className="bond-card-topline"><span className="bond-code">{bond.name}</span><span className="bond-duration">{term(bond.maturityMonths)}</span></div>
+                      <h3 id={`title-${bond.name}`}>{bond.displayName}</h3>
+                      <span className="bond-kind">{bond.basedOnInflation ? "Indeksowane inflacją" : bond.basedOnNBP ? "Zmienne oprocentowanie" : "Stałe oprocentowanie"}</span>
+                      <p className="bond-rate">{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}<span>%</span><small>rocznie{bond.variableRate ? " na start" : ""}</small></p>
+                      <p className="bond-series">{bond.series}</p>
+                    </div>
+                    <div className="comparison-value profit-cell"><span className="mobile-cell-label">Zysk netto</span><span className="bond-profit" data-testid="profit">{money(bond.profit)}<small> zł</small></span>{bond.name === leader.name && bond.profit > 0 && <span className="result-tag">Najwyższy wynik</span>}</div>
+                    <div className="comparison-value"><span className="mobile-cell-label">Łączne środki netto</span><span>{formatCurrency(bond.totalValue)}</span></div>
+                    <div className="comparison-value mobile-extra"><span className="mobile-cell-label">Cena zakupu</span><span>{formatCurrency(bond.purchasePrice)}</span></div>
+                    <div className="comparison-value rate-cell"><span className="mobile-cell-label">Oprocentowanie</span><span>{bond.variableRate ? `${bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}% w pierwszym ${bond.basedOnNBP ? "miesiącu" : "roku"}` : `${bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}% w skali roku`}{bond.variableRate && <small>Potem: {bond.basedOnNBP ? "stopa NBP" : "inflacja"} + {bond.margin.toLocaleString("pl-PL", { minimumFractionDigits: 2 })} p.p.</small>}</span></div>
+                    <div className="comparison-value mobile-extra"><span className="mobile-cell-label">Wypłata odsetek</span><span>{bond.interestPayment === "monthly" ? "Co miesiąc" : bond.interestPayment === "yearly" ? "Co rok" : "Przy wykupie"}</span></div>
+                    <div className="comparison-value fee-cell mobile-extra"><span className="mobile-cell-label">Opłata za wcześniejszy wykup</span><span>{bond.loseInterestOnEarlyWithdrawal ? "Brak, utrata odsetek" : `${bond.withdrawalFee} za obligację`}</span></div>
+                    <div className="comparison-value actions-cell"><a className="issuer-link" href={bond.detailsUrl} target="_blank" rel="noopener noreferrer">Warunki u emitenta <ArrowUpRight size={14} aria-hidden="true" /></a><span className="issuer-domain">obligacjeskarbowe.pl</span></div>
+                    <details className="bond-calculation"><summary>Rozliczenie <ChevronDown size={17} aria-hidden="true" /></summary>
+                  <div className="bond-details">
+                    <div className="detail-intro"><span>{bond.series}</span><p>{bond.displayName}</p></div>
+                    <div className="detail-columns">
+                      <dl className="bond-facts">
+                        <div><dt>Oprocentowanie</dt><dd>{bond.interestDetails}</dd></div>
+                        <div><dt>Okres oprocentowania</dt><dd>{bond.interestPeriod}</dd></div>
+                        <div><dt>Wypłata odsetek</dt><dd>{bond.interestPayment === "monthly" ? "Co miesiąc" : bond.interestPayment === "yearly" ? "Co rok" : "Przy wykupie"}</dd></div>
+                        <div><dt>Wcześniejszy wykup</dt><dd>{bond.loseInterestOnEarlyWithdrawal ? "Bez opłaty · utrata odsetek" : `${bond.withdrawalFee} za obligację`}</dd></div>
+                        <div><dt>Cena zakupu / zamiany</dt><dd>{formatCurrency(bond.purchasePrice)} / {typeof bond.exchangePrice === "number" ? formatCurrency(bond.exchangePrice) : "brak zamiany"}</dd></div>
+                      </dl>
+                      <div className="calculation-ledger" data-testid="breakdown">
+                        <h3>Rozliczenie scenariusza</h3>
+                        <dl>
+                          <div><dt>Odsetki brutto</dt><dd>{formatCurrency(bond.grossInterest)}</dd></div>
+                          <div><dt>Podatek 19%</dt><dd>{formatCurrency(bond.tax)}</dd></div>
+                          <div><dt>Opłaty za wykup</dt><dd>{formatCurrency(bond.fees)}</dd></div>
+                          <div><dt>Pierwszy zakup</dt><dd>{bond.initialBondCount.toLocaleString("pl-PL")} szt.</dd></div>
+                          <div><dt>Reszta po 1. zakupie</dt><dd>{formatCurrency(bond.initialCash)}</dd></div>
+                          <div><dt>Liczba zakupów</dt><dd>{bond.purchaseRounds.length}</dd></div>
+                          <div className="ledger-total"><dt>Łączne środki netto</dt><dd>{formatCurrency(bond.totalValue)}</dd></div>
+                        </dl>
+                      </div>
+                    </div>
+                    <p className="withdrawal-note">{bond.withdrawalConditions}</p>
+                    {bond.familyReinvestmentSkipped && <p className="withdrawal-note">Po wykupie środki pozostają w gotówce: ponowny zakup ROS/ROD wymaga nowego limitu 800+.</p>}
+                    <div className="detail-links">
+                      <div><a href={bond.detailsUrl} target="_blank" rel="noopener noreferrer">Warunki emisji <ArrowUpRight size={14} aria-hidden="true" /></a><a href={bond.emissionLetterUrl} target="_blank" rel="noopener noreferrer">List emisyjny <ArrowUpRight size={14} aria-hidden="true" /></a></div>
+                    </div>
+                  </div>
+                    </details>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="results-notes"><p>Zysk netto dotyczy {formatCurrency(investment)} i okresu {horizonLabel}. Obligacje uporządkowano według typów emisji.</p><p>To symulacja dla Twoich założeń. Przyszłe stopy procentowe i inflacja mogą zmienić wynik.</p></div>
+        </section>
+
+        <div className="page-width">
+        <details className="methodology" id="zasady">
+          <summary><span><span className="eyebrow">Zasady kalkulatora</span><span className="methodology-title">Jak liczymy wynik?</span></span><ChevronDown size={20} aria-hidden="true" /></summary>
+          <div className="methodology-body">
+            <section><h3>Odsetki, podatek i opłaty</h3><p>Wynik obejmuje kapitał, niewydaną gotówkę i wypłacone kupony po podatku 19% oraz opłatach. Kupujemy pełne obligacje po 100 zł. Opłata za wcześniejszy wykup pomniejsza odsetki przed podatkiem, zgodnie z zasadami danej emisji.</p><p>ROR i DOR wypłacają odsetki miesięcznie, COI rocznie. TOS, EDO, ROS i ROD mają roczną kapitalizację i podatek przy wypłacie. Ujemna inflacja nie obniża oprocentowania poniżej marży; zysk netto może być niższy od inflacji.</p></section>
+            <section><h3>Reinwestowanie</h3><p>Bez reinwestowania środki po wykupie i kupony pozostają nieoprocentowane. Po włączeniu tej opcji przy terminowym wykupie kupujemy pełne obligacje za kapitał, zebrane kupony i resztę gotówki.</p><p>Przyszłe emisje symulujemy na warunkach obecnej oferty, po cenie 100 zł, bez dyskonta zamiany. ROS i ROD wymagają uprawnienia do 800+ oraz dostępnego limitu; nie są automatycznie kupowane ponownie.</p></section>
+            <section><h3>Założenia i daty</h3><p>Pierwszy okres korzysta ze stawki oferty. Kolejne z Twoich stałych założeń NBP lub inflacji. Niepełny rok liczymy według rzeczywistej liczby dni. Kupon kończący się w dniu wcześniejszego wykupu rozliczamy razem z wykupem.</p><p>Horyzont wskazuje dzień rozliczenia, bez doliczania pięciu dni roboczych od dyspozycji i przesunięć w święta. Odsetki zaokrąglamy do grosza za obligację, podatek w górę od wypłaty partii. Rozliczenie banku może różnić się terminem i zaokrągleniami. Kalkulator nie obejmuje IKE/IKZE.</p></section>
+          </div>
+        </details>
+        </div>
+      </main>
+      <footer className="site-footer"><div className="page-width footer-inner"><div><strong>plBonds</strong><p>Niezależny kalkulator obligacji skarbowych.</p><a href="https://github.com/jacjacek/plBonds" target="_blank" rel="noopener noreferrer">Kod na GitHubie <ArrowUpRight size={13} aria-hidden="true" /></a></div><div><p>Dane z {formatDate(OFFER.verifiedAt)}</p><a href="https://www.obligacjeskarbowe.pl/oferta/" target="_blank" rel="noopener noreferrer">Oferta na obligacjeskarbowe.pl <ArrowUpRight size={14} aria-hidden="true" /></a></div></div></footer>
     </div>
   )
 }

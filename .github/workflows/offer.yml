@@ -1,0 +1,16 @@
+name: Check offer freshness
+on:
+  schedule:
+    - cron: '0 7 1,2 * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+      - run: node scripts/check-offer.mjs
