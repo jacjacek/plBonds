@@ -2,12 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react"
 import type React from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { ArrowUpRight, ChevronDown, ArrowRight } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
 import { BONDS, OFFER, isOfferCurrent } from "@/lib/bonds"
 import { addMonths, calculateReturn, MAX_INVESTMENT } from "@/lib/calculator"
 
@@ -30,7 +26,7 @@ const BondsCalculator = () => {
 
   // Helpers for robust numeric inputs (support comma/dot, preserve mid-typing)
   const normalizeDecimal = (value: string): string => value.replace(/\s+/g, "").replace(",", ".")
-  const isPartialNumeric = (value: string): boolean => /^-?[0-9]*([,.][0-9]*)?$/.test(value)
+  const isPartialNumeric = (value: string): boolean => /^-?[0-9]*([,.][0-9]*)?$/.test(value.replace(/\s/g, ""))
 
   const handleEnterBlur = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -40,7 +36,7 @@ const BondsCalculator = () => {
   }
 
   // Raw input strings to avoid jumping to 0 during typing
-  const [investmentRaw, setInvestmentRaw] = useState<string>(String(investment))
+  const [investmentRaw, setInvestmentRaw] = useState<string>(investment.toLocaleString("pl-PL", { maximumFractionDigits: 2 }))
   const [inflationRaw, setInflationRaw] = useState<string>(String(inflation).replace(".", ","))
   const [nbpRateRaw, setNbpRateRaw] = useState<string>(String(nbpRate).replace(".", ","))
 
@@ -68,354 +64,197 @@ const BondsCalculator = () => {
     }).format(value)
   }
 
+  const term = (months: number) => ({ 3: "3 miesiące", 12: "1 rok", 24: "2 lata", 36: "3 lata", 48: "4 lata", 72: "6 lat", 120: "10 lat", 144: "12 lat" } as Record<number, string>)[months] ?? `${months} mies.`
+  const formatDate = (date: string) => new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${date}T00:00:00Z`))
+  const bestProfit = Math.max(0, ...results.map((bond) => bond.profit))
+  const money = (value: number) => formatCurrency(value).replace(/\s*zł$/, "")
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#0033CC] flex items-center justify-center text-white font-bold text-xl">
-              OS
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Obligacje Skarbowe</h1>
-              <p className="text-sm text-gray-600">Kalkulator porównawczy</p>
-            </div>
+    <div className="bonds-app">
+      <header className="site-header">
+        <div className="page-width header-inner">
+          <a className="wordmark" href="#" aria-label="plBonds — kalkulator obligacji">
+            <span className="brand-mark" aria-hidden="true"><i /><i /></span>
+            pl<span>Bonds</span>
+          </a>
+          <nav className="header-nav" aria-label="Nawigacja główna">
+            <a href="#kalkulator" className="is-active">Kalkulator</a>
+            <a href="#zasady">Jak liczymy</a>
+          </nav>
+          <a className="source-link" href={OFFER.sourceUrl} target="_blank" rel="noopener noreferrer">
+            Oficjalna oferta <ArrowUpRight size={16} aria-hidden="true" />
+          </a>
+        </div>
+      </header>
+
+      <main className="page-width" id="kalkulator">
+        <section className="page-intro" aria-labelledby="page-title">
+          <div>
+            <p className="eyebrow">Obligacje skarbowe</p>
+            <h1 id="page-title">Kalkulator obligacji</h1>
+            <p className="intro-copy">Porównaj ofertę. Sprawdź zysk po podatku i opłatach.</p>
           </div>
-        </div>
-      </div>
+          <div className={`offer-meta ${!offerCurrent ? "offer-archived" : ""}`} role="status">
+            <span className="offer-label"><span aria-hidden="true" /> Oferta · {OFFER.label}</span>
+            <span>Sprzedaż {formatDate(OFFER.validFrom)} – {formatDate(OFFER.validTo)}</span>
+            {!offerCurrent && <strong>Ta oferta jest archiwalna. Sprawdź aktualne warunki przed zakupem.</strong>}
+          </div>
+        </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        <div className="space-y-3">
-          <h2 className="text-4xl font-bold text-gray-900">Tabela porównawcza</h2>
-          <p className="text-lg text-gray-600 max-w-3xl">
-            Obligacje skarbowe – oprocentowanie, rodzaje. Zastanawiasz się, jakie wybrać? Poznaj rodzaje obligacji
-            skarbowych. Porównaj ofertę obligacji Skarbu Państwa ({OFFER.label}) i sprawdź wynik dla swoich założeń.
-          </p>
-        </div>
-
-        <div className={`border p-4 text-sm ${offerCurrent ? "bg-blue-50 text-blue-950" : "bg-amber-50 border-amber-400 text-amber-950"}`} role="status">
-          <p className="font-semibold">Oferta: {OFFER.label} · sprzedaż {OFFER.validFrom} – {OFFER.validTo} · weryfikacja {OFFER.verifiedAt}</p>
-          {!offerCurrent && <p className="mt-1 font-semibold">Ta oferta jest archiwalna. Sprawdź aktualne warunki przed zakupem.</p>}
-          <a href={OFFER.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">Źródło: obligacjeskarbowe.pl</a>
-        </div>
-
-        <Card className="border shadow-sm rounded-none">
-          <CardContent className="p-6 space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="investment" className="text-base font-semibold">
-                Kwota inwestycji (PLN)
-              </Label>
-              <Input
-                id="investment"
-                type="text"
-                inputMode="decimal"
-                value={investmentRaw}
-                onChange={(e) => {
-                  const raw = e.target.value
-                  if (raw === "" || isPartialNumeric(raw)) {
-                    setInvestmentRaw(raw)
-                  }
-                }}
-                onKeyDown={handleEnterBlur}
-                onBlur={() => {
-                  const normalized = normalizeDecimal(investmentRaw)
-                  const parsed = Number.parseFloat(normalized)
-                  if (Number.isFinite(parsed)) {
-                    const clamped = Math.round(Math.min(MAX_INVESTMENT, Math.max(100, parsed)) * 100) / 100
-                    setInvestment(clamped)
-                    setInvestmentRaw(String(clamped).replace(".", ","))
-                  } else {
-                    setInvestmentRaw(String(investment).replace(".", ","))
-                  }
-                }}
-                className="rounded-none text-lg font-semibold"
-              />
-              <p className="text-sm text-gray-600">Od 100 zł do 1 mld zł. Kupujemy pełne obligacje po 100 zł, a reszta pozostaje w gotówce.</p>
+        <div className="calculator-layout">
+          <aside className="scenario-panel" aria-labelledby="scenario-title">
+            <div className="panel-heading"><h2 id="scenario-title">Twoje założenia</h2></div>
+            <div className="field investment-field">
+              <label htmlFor="investment">Kwota inwestycji <span className="sr-only">(PLN)</span></label>
+              <div className="input-wrap">
+                <input id="investment" type="text" inputMode="decimal" value={investmentRaw}
+                  onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setInvestmentRaw(e.target.value) }}
+                  onKeyDown={handleEnterBlur}
+                  onBlur={() => {
+                    const parsed = Number.parseFloat(normalizeDecimal(investmentRaw))
+                    if (Number.isFinite(parsed)) {
+                      const value = Math.round(Math.min(MAX_INVESTMENT, Math.max(100, parsed)) * 100) / 100
+                      setInvestment(value)
+                      setInvestmentRaw(value.toLocaleString("pl-PL", { maximumFractionDigits: 2 }))
+                    } else setInvestmentRaw(String(investment).replace(".", ","))
+                  }} />
+                <span className="input-unit">zł</span>
+              </div>
+              <p className="field-hint">Obligacje po 100 zł. Reszta zostaje w gotówce.</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="purchaseDate">Data zakupu z tej oferty</Label>
-              <Input id="purchaseDate" type="date" min={OFFER.validFrom} max={OFFER.validTo}
-                value={purchaseDate}
+            <div className="field horizon-field">
+              <div className="field-line"><label htmlFor="horizon">Okres inwestycji</label><span className="horizon-value">{monthsToWithdraw} mies.</span></div>
+              <Slider id="horizon" aria-label="Okres inwestycji w miesiącach" className="horizon-slider"
+                value={[monthsToWithdraw]} onValueChange={(value) => setMonthsToWithdraw(value[0])} min={1} max={144} step={1} />
+              <div className="horizon-presets" aria-label="Szybki wybór okresu">
+                {[{ months: 12, label: "1 rok" }, { months: 36, label: "3 lata" }, { months: 120, label: "10 lat" }].map((preset) => (
+                  <button key={preset.months} type="button" onClick={() => setMonthsToWithdraw(preset.months)} aria-pressed={monthsToWithdraw === preset.months}>{preset.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="field-pair">
+              <div className="field">
+                <label htmlFor="inflation">Inflacja roczna</label>
+                <div className="input-wrap">
+                  <input id="inflation" aria-label="Założona przyszła inflacja roczna (%)" type="text" inputMode="decimal" value={inflationRaw}
+                    onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setInflationRaw(e.target.value) }}
+                    onKeyDown={handleEnterBlur} onBlur={() => {
+                      const parsed = Number.parseFloat(normalizeDecimal(inflationRaw))
+                      if (Number.isFinite(parsed)) {
+                        const value = Math.min(100, Math.max(-20, parsed))
+                        setInflation(value); setInflationRaw(String(value).replace(".", ","))
+                      } else setInflationRaw(String(inflation).replace(".", ","))
+                    }} />
+                  <span className="input-unit">%</span>
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="nbpRate">Stopa NBP</label>
+                <div className="input-wrap">
+                  <input id="nbpRate" aria-label="Założona przyszła stopa NBP (%)" type="text" inputMode="decimal" value={nbpRateRaw}
+                    onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setNbpRateRaw(e.target.value) }}
+                    onKeyDown={handleEnterBlur} onBlur={() => {
+                      const parsed = Number.parseFloat(normalizeDecimal(nbpRateRaw))
+                      if (Number.isFinite(parsed)) {
+                        const value = Math.min(100, Math.max(0, parsed))
+                        setNbpRate(value); setNbpRateRaw(String(value).replace(".", ","))
+                      } else setNbpRateRaw(String(nbpRate).replace(".", ","))
+                    }} />
+                  <span className="input-unit">%</span>
+                </div>
+              </div>
+              <p className="field-hint">Twoje założenia dla kolejnych okresów odsetkowych.</p>
+            </div>
+
+            <div className="field date-field">
+              <label htmlFor="purchaseDate">Data zakupu</label>
+              <input id="purchaseDate" type="date" min={OFFER.validFrom} max={OFFER.validTo} value={purchaseDate}
                 onChange={(event) => {
                   const value = event.target.value
                   if (value >= OFFER.validFrom && value <= OFFER.validTo) setPurchaseDate(value)
-                }} className="rounded-none w-full sm:w-64" />
+                }} />
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="horizon" className="text-base font-semibold">Okres inwestycji</Label>
-                <Badge variant="secondary" className="text-base font-semibold px-4 py-1 rounded-none">
-                  {monthsToWithdraw}{" "}
-                  {monthsToWithdraw === 1 ? "miesiąc" : monthsToWithdraw < 5 ? "miesiące" : "miesięcy"}
-                </Badge>
+            <div className="scenario-options">
+              <div className="option-row">
+                <label htmlFor="reinvest"><span>Reinwestowanie po wykupie</span><small>Kolejny zakup po terminowym wykupie.</small></label>
+                <input className="scenario-toggle" type="checkbox" role="switch" id="reinvest" checked={autoReinvest} onChange={(e) => setAutoReinvest(e.target.checked)} />
               </div>
-              <Slider
-                id="horizon"
-                aria-label="Okres inwestycji w miesiącach"
-                value={[monthsToWithdraw]}
-                onValueChange={(value) => setMonthsToWithdraw(value[0])}
-                min={1}
-                max={144}
-                step={1}
-                className="w-full"
-              />
-            </div>
-
-            <div className="flex items-center justify-between gap-4 p-4 rounded-none border bg-gray-50">
-              <div>
-                <Label htmlFor="reinvest" className="text-base font-medium cursor-pointer">
-                  Reinwestowanie po wykupie
-                </Label>
-                <p className="text-sm text-gray-600">Po terminowym wykupie kupuj pełne obligacje po 100 zł. Kupony czekają w gotówce do wykupu.</p>
-              </div>
-              <Switch id="reinvest" checked={autoReinvest} onCheckedChange={setAutoReinvest} />
-            </div>
-
-            <div className="flex items-center justify-between gap-4 p-4 rounded-none border bg-gray-50">
-              <div>
-                <Label htmlFor="excludeFamily" className="text-base font-medium cursor-pointer">
-                  Wyklucz obligacje rodzinne (ROD, ROS)
-                </Label>
-                <p className="text-sm text-gray-600">ROS i ROD: tylko dla uprawnionych do 800+, w granicach dostępnego limitu.</p>
-              </div>
-              <Switch id="excludeFamily" checked={excludeFamilyBonds} onCheckedChange={setExcludeFamilyBonds} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="inflation" className="text-sm font-medium">
-                  Założona przyszła inflacja roczna (%)
-                </Label>
-                <Input
-                  id="inflation"
-                  type="text"
-                  inputMode="decimal"
-                  value={inflationRaw}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    if (raw === "" || isPartialNumeric(raw)) {
-                      setInflationRaw(raw)
-                    }
-                  }}
-                  onKeyDown={handleEnterBlur}
-                  onBlur={() => {
-                    const normalized = normalizeDecimal(inflationRaw)
-                    const parsed = Number.parseFloat(normalized)
-                    if (Number.isFinite(parsed)) {
-                      const value = Math.min(100, Math.max(-20, parsed))
-                      setInflation(value)
-                      setInflationRaw(String(value).replace(".", ","))
-                    } else {
-                      setInflationRaw(String(inflation).replace(".", ","))
-                    }
-                  }}
-                  className="rounded-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nbpRate" className="text-sm font-medium">
-                  Założona przyszła stopa NBP (%)
-                </Label>
-                <Input
-                  id="nbpRate"
-                  type="text"
-                  inputMode="decimal"
-                  value={nbpRateRaw}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    if (raw === "" || isPartialNumeric(raw)) {
-                      setNbpRateRaw(raw)
-                    }
-                  }}
-                  onKeyDown={handleEnterBlur}
-                  onBlur={() => {
-                    const normalized = normalizeDecimal(nbpRateRaw)
-                    const parsed = Number.parseFloat(normalized)
-                    if (Number.isFinite(parsed)) {
-                      const value = Math.min(100, Math.max(0, parsed))
-                      setNbpRate(value)
-                      setNbpRateRaw(String(value).replace(".", ","))
-                    } else {
-                      setNbpRateRaw(String(nbpRate).replace(".", ","))
-                    }
-                  }}
-                  className="rounded-none"
-                />
+              <div className="option-row">
+                <label htmlFor="includeFamily"><span>Uwzględnij obligacje rodzinne</span><small>ROS i ROD · wymagany limit 800+.</small></label>
+                <input className="scenario-toggle" type="checkbox" role="switch" id="includeFamily" checked={!excludeFamilyBonds} onChange={(e) => setExcludeFamilyBonds(!e.target.checked)} />
               </div>
             </div>
-          </CardContent>
-        </Card>
+            <p className="scenario-footnote">Symulacja na zwykłym rachunku, z podatkiem 19% i opłatami za wykup.</p>
+          </aside>
 
-        <p className="text-sm text-gray-600 md:hidden">Przesuń tabelę w bok, aby porównać kolejne obligacje. Wyniki są posortowane od największego zysku.</p>
-        <div className="bg-white border rounded-none shadow-sm overflow-hidden">
-          <div className="overflow-x-auto snap-x snap-mandatory md:snap-none" aria-label="Porównanie obligacji">
-            <div className="inline-flex min-w-full">
-              <div className="hidden md:block flex-shrink-0 w-64 border-r bg-gray-50">
-                <div className="h-96 border-b flex items-center justify-center">
-                  <div className="text-center px-4">
-                    <p className="text-sm text-gray-500 mb-2">Porównaj obligacje</p>
-                  </div>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Cena zakupu</p>
-                </div>
-                <div className="border-b p-4 h-28 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Odsetki</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Okres oprocentowania</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Cena zamiany</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Wcześniejszy wykup</p>
-                </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Opłata za wykup</p>
-                </div>
-                <div className="border-b p-4 h-28 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Warunki wykupu</p>
-                </div>
-                <div className="border-b p-4 h-32 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Zalety</p>
-                </div>
-                <div className="p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Rozliczenie i zakup</p>
-                </div>
-              </div>
-
+          <section className="results-section" aria-labelledby="results-title">
+            <div className="results-heading">
+              <div><p className="eyebrow">Twój scenariusz</p><h2 id="results-title">Porównanie wyników</h2></div>
+              <span className="results-count">{results.length} rodzajów obligacji</span>
+            </div>
+            <p className="results-context">{formatCurrency(investment)} <span aria-hidden="true">/</span> {monthsToWithdraw} mies. <span aria-hidden="true">/</span> po podatku i opłatach</p>
+            <div className="comparison-head" aria-hidden="true"><span>Obligacja</span><span>Oprocentowanie¹</span><span>Zysk netto</span><span>Łączne środki</span><span /></div>
+            <div className="bond-list" aria-label="Porównanie obligacji">
               {results.map((bond, idx) => (
-                <div key={bond.name} data-testid={`bond-${bond.name}`} className={`snap-start flex-shrink-0 w-[calc(100vw-2rem-2px)] sm:w-64 ${idx < results.length - 1 ? "border-r" : ""}`}>
-                  <div className="h-96 border-b p-6 flex flex-col justify-between bg-white">
-                    <div className="space-y-3">
-                      <div className="bg-green-50 border-2 border-green-500 p-3 rounded-none">
-                        <p className="text-xs text-green-700 font-semibold mb-1">ZYSK PO {monthsToWithdraw} MIES.</p>
-                        <p data-testid="profit" className={`text-2xl break-words font-bold ${bond.profit < 0 ? "text-red-600" : "text-green-600"}`}>{formatCurrency(bond.profit)}</p>
+                <details key={bond.name} data-testid={`bond-${bond.name}`} className={`bond-row ${idx === 0 && bond.profit > 0 ? "leading-result" : ""}`}>
+                  <summary className="bond-summary">
+                    <span className="bond-identity"><span className="bond-code">{bond.name}<span className="bond-term">{term(bond.maturityMonths)}</span></span><span className="bond-kind"><span className="kind-desktop">{bond.basedOnInflation ? "Indeksowane inflacją" : bond.basedOnNBP ? "Zmienne · stopa NBP" : "Stałe oprocentowanie"}</span><span className="kind-mobile">{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}% rocznie¹</span></span></span>
+                    <span className="bond-rate"><span>{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}<small>%</small></span><span className="rate-period">{bond.variableRate ? (bond.basedOnNBP ? "pierwszy miesiąc" : "pierwszy rok") : "w skali roku"}</span></span>
+                    <span className={`bond-profit ${bond.profit < 0 ? "negative-value" : ""}`}><span className="mobile-profit-label">Zysk netto</span><span data-testid="profit">{money(bond.profit)}<small> zł</small></span><span className="profit-track" aria-hidden="true"><span style={{ width: `${bestProfit > 0 ? Math.max(0, bond.profit) / bestProfit * 100 : 0}%` }} /></span></span>
+                    <span className="bond-total">{money(bond.totalValue)}<small> zł</small></span>
+                    <ChevronDown className="row-chevron" size={17} aria-hidden="true" />
+                  </summary>
+                  <div className="bond-details">
+                    <div className="detail-intro"><span>{bond.series}</span><p>{bond.displayName}</p></div>
+                    <div className="detail-columns">
+                      <dl className="bond-facts">
+                        <div><dt>Oprocentowanie</dt><dd>{bond.interestDetails}</dd></div>
+                        <div><dt>Okres oprocentowania</dt><dd>{bond.interestPeriod}</dd></div>
+                        <div><dt>Wypłata odsetek</dt><dd>{bond.interestPayment === "monthly" ? "Co miesiąc" : bond.interestPayment === "yearly" ? "Co rok" : "Przy wykupie"}</dd></div>
+                        <div><dt>Wcześniejszy wykup</dt><dd>{bond.loseInterestOnEarlyWithdrawal ? "Bez opłaty · utrata odsetek" : `${bond.withdrawalFee} za obligację`}</dd></div>
+                        <div><dt>Cena zakupu / zamiany</dt><dd>{formatCurrency(bond.purchasePrice)} / {typeof bond.exchangePrice === "number" ? formatCurrency(bond.exchangePrice) : "brak zamiany"}</dd></div>
+                      </dl>
+                      <div className="calculation-ledger" data-testid="breakdown">
+                        <h3>Rozliczenie scenariusza</h3>
+                        <dl>
+                          <div><dt>Odsetki brutto</dt><dd>{formatCurrency(bond.grossInterest)}</dd></div>
+                          <div><dt>Podatek 19%</dt><dd>{formatCurrency(bond.tax)}</dd></div>
+                          <div><dt>Opłaty za wykup</dt><dd>{formatCurrency(bond.fees)}</dd></div>
+                          <div><dt>Pierwszy zakup</dt><dd>{bond.initialBondCount.toLocaleString("pl-PL")} szt.</dd></div>
+                          <div><dt>Reszta po 1. zakupie</dt><dd>{formatCurrency(bond.initialCash)}</dd></div>
+                          <div><dt>Liczba zakupów</dt><dd>{bond.purchaseRounds.length}</dd></div>
+                          <div className="ledger-total"><dt>Łączne środki netto</dt><dd>{formatCurrency(bond.totalValue)}</dd></div>
+                        </dl>
                       </div>
-                      <div
-                        className={`text-5xl font-bold ${
-                          bond.typeLabel === "STAŁOPROCENTOWE"
-                            ? "text-red-600"
-                            : bond.typeLabel === "ZMIENNOPROCENTOWE"
-                              ? "text-blue-600"
-                              : "text-purple-600"
-                        }`}
-                      >
-                        {bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}%
-                      </div>
-                      <p className="text-xs text-gray-500">W skali roku{bond.variableRate ? (bond.basedOnNBP ? "; pierwszy miesiąc" : "; pierwszy rok") : ""}</p>
-                      <h3 className="text-base font-bold text-gray-900 leading-tight">{bond.displayName}</h3>
-                      <Badge
-                        variant="outline"
-                        className={`font-semibold text-xs rounded-none ${
-                          bond.typeLabel === "STAŁOPROCENTOWE"
-                            ? "text-red-600 border-red-600 bg-red-50"
-                            : bond.typeLabel === "ZMIENNOPROCENTOWE"
-                              ? "text-blue-600 border-blue-600 bg-blue-50"
-                              : "text-purple-600 border-purple-600 bg-purple-50"
-                        }`}
-                      >
-                        {bond.typeLabel}
-                      </Badge>
-                      <p className="text-xs text-gray-600">
-                        <span className="font-semibold">Seria:</span> {bond.series}
-                      </p>
+                    </div>
+                    <p className="withdrawal-note">{bond.withdrawalConditions}</p>
+                    {bond.familyReinvestmentSkipped && <p className="withdrawal-note">Po wykupie środki pozostają w gotówce: ponowny zakup ROS/ROD wymaga nowego limitu 800+.</p>}
+                    <div className="detail-links">
+                      <div><a href={bond.detailsUrl} target="_blank" rel="noopener noreferrer">Warunki emisji <ArrowUpRight size={14} aria-hidden="true" /></a><a href={bond.emissionLetterUrl} target="_blank" rel="noopener noreferrer">List emisyjny <ArrowUpRight size={14} aria-hidden="true" /></a></div>
+                      <a className="purchase-link" href={bond.buyUrl} target="_blank" rel="noopener noreferrer">Przejdź do zakupu <ArrowRight size={15} aria-hidden="true" /></a>
                     </div>
                   </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center"><span className="block md:hidden text-xs font-semibold text-[#0033CC] mb-1">Cena zakupu</span>{formatCurrency(bond.purchasePrice)}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-28 flex items-center justify-center">
-                    <p className="text-xs text-center leading-relaxed"><span className="block md:hidden text-xs font-semibold text-[#0033CC] mb-1">Odsetki</span>{bond.interestDetails}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-xs text-center"><span className="block md:hidden text-xs font-semibold text-[#0033CC] mb-1">Okres oprocentowania</span>{bond.interestPeriod}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center">
-                      <span className="block md:hidden text-xs font-semibold text-[#0033CC] mb-1">Cena zamiany</span>
-                      {typeof bond.exchangePrice === "number"
-                        ? formatCurrency(bond.exchangePrice)
-                        : "Brak"}
-                    </p>
-                  </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center"><span className="block md:hidden text-xs font-semibold text-[#0033CC] mb-1">Wcześniejszy wykup</span>{bond.earlyWithdrawalPossible ? "Tak" : "Nie"}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm text-center"><span className="block md:hidden text-xs font-semibold text-[#0033CC] mb-1">Opłata za wykup</span>{bond.withdrawalFee}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-28 flex items-center justify-center">
-                    <p className="text-xs text-center"><span className="block md:hidden text-xs font-semibold text-[#0033CC] mb-1">Warunki wykupu</span>{bond.withdrawalConditions}</p>
-                  </div>
-
-                  <div className="border-b p-4 h-32 flex items-center">
-                    <p className="text-xs text-gray-700 text-center leading-relaxed"><span className="block md:hidden text-xs font-semibold text-[#0033CC] mb-1">Zalety</span>{bond.advantages}</p>
-                  </div>
-
-                  <div className="px-4 pb-4 pt-4 space-y-2">
-                    <details className="text-xs text-gray-700 mb-4">
-                      <summary className="cursor-pointer font-semibold text-[#0033CC]">Rozliczenie wyniku</summary>
-                      <dl className="mt-3 space-y-2" data-testid="breakdown">
-                        <div><dt>Łączne środki netto</dt><dd>{formatCurrency(bond.totalValue)}</dd></div>
-                        <div><dt>Odsetki brutto łącznie</dt><dd>{formatCurrency(bond.grossInterest)}</dd></div>
-                        <div><dt>Podatek łącznie</dt><dd>{formatCurrency(bond.tax)}</dd></div>
-                        <div><dt>Opłaty łącznie</dt><dd>{formatCurrency(bond.fees)}</dd></div>
-                        <div><dt>Obligacje przy pierwszym zakupie</dt><dd>{bond.initialBondCount} szt.</dd></div>
-                        <div><dt>Gotówka po pierwszym zakupie</dt><dd>{formatCurrency(bond.initialCash)}</dd></div>
-                        <div><dt>Liczba zakupów</dt><dd>{bond.purchaseRounds.length}</dd></div>
-                      </dl>
-                      {bond.familyReinvestmentSkipped && <p className="mt-2">Po wykupie środki pozostają w gotówce: ponowny zakup ROS/ROD wymaga nowego limitu 800+.</p>}
-                    </details>
-                    <a
-                      href={bond.buyUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full inline-flex items-center justify-center bg-[#0033CC] hover:bg-[#0029AA] text-white font-semibold rounded-none h-10"
-                    >
-                      Kup
-                    </a>
-                    <a href={bond.emissionLetterUrl} target="_blank" rel="noopener noreferrer" className="block text-center text-xs text-[#0033CC] hover:underline">List emisyjny (PDF)</a>
-                    <a
-                      href={bond.detailsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-center text-sm text-[#0033CC] hover:underline font-medium"
-                    >
-                      Szczegóły →
-                    </a>
-                  </div>
-                </div>
+                </details>
               ))}
             </div>
-          </div>
+            <div className="results-notes"><p>Posortowano według zysku netto. Rozwiń wiersz, aby zobaczyć rozliczenie.</p><p>¹ Stawka roczna. Dla obligacji zmiennych dotyczy pierwszego okresu odsetkowego.</p></div>
+            <div className="results-disclaimer"><span aria-hidden="true">i</span><p>To symulacja dla Twoich założeń. Przyszłe stopy procentowe i inflacja mogą zmienić wynik.</p></div>
+          </section>
         </div>
 
-        <Card className="border shadow-sm bg-blue-50 rounded-none">
-          <CardContent className="p-6">
-            <h4 className="text-lg font-semibold mb-4 text-gray-900">Informacje dodatkowe</h4>
-            <ul className="space-y-2 text-sm text-gray-700 list-disc pl-5">
-              <li>Wynik to kapitał, niewydana gotówka i wszystkie wypłacone odsetki, po podatku 19% i opłatach.</li>
-              <li>Stawka pierwszego miesiąca ROR/DOR i pierwszego roku obligacji inflacyjnych pochodzi z oferty. Późniejsze stawki wyliczamy z Twoich stałych założeń; nie jest to prognoza NBP ani GUS.</li>
-              <li>Ujemna inflacja nie obniża oprocentowania poniżej marży. Podatek może sprawić, że zysk netto nie pokryje inflacji.</li>
-              <li>Bez reinwestowania środki po wykupie i wypłacone kupony pozostają nieoprocentowane. Reinwestowanie obejmuje kapitał, zebrane kupony i resztę gotówki, dopiero w terminie wykupu.</li>
-              <li>Przyszłe emisje symulujemy na warunkach obecnej oferty, po cenie 100 zł, bez dyskonta za zamianę. ROS/ROD nie są kupowane ponownie automatycznie: wymagają dostępnego limitu 800+.</li>
-              <li>Odsetki za niepełny rok liczymy proporcjonalnie do rzeczywistej liczby dni. Kupon kończący się w dniu wcześniejszego wykupu rozliczamy z tym wykupem. Odsetki jednej obligacji zaokrąglamy do grosza, podatek w górę od całej wypłaty danej partii.</li>
-              <li>To symulacja porównawcza na zwykłym rachunku, bez IKE/IKZE. Horyzont wskazuje dzień rozliczenia; nie doliczamy 5 dni roboczych od dyspozycji ani przesunięć wypłat w święta. Rzeczywiste rozliczenie banku może różnić się terminem i zaokrągleniami.</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
+        <details className="methodology" id="zasady">
+          <summary><span><span className="eyebrow">Zasady kalkulatora</span><span className="methodology-title">Jak liczymy wynik?</span></span><ChevronDown size={20} aria-hidden="true" /></summary>
+          <div className="methodology-body">
+            <section><h3>Odsetki, podatek i opłaty</h3><p>Wynik obejmuje kapitał, niewydaną gotówkę i wypłacone kupony po podatku 19% oraz opłatach. Kupujemy pełne obligacje po 100 zł. Opłata za wcześniejszy wykup pomniejsza odsetki przed podatkiem, zgodnie z zasadami danej emisji.</p><p>ROR i DOR wypłacają odsetki miesięcznie, COI rocznie. TOS, EDO, ROS i ROD mają roczną kapitalizację i podatek przy wypłacie. Ujemna inflacja nie obniża oprocentowania poniżej marży; zysk netto może być niższy od inflacji.</p></section>
+            <section><h3>Reinwestowanie</h3><p>Bez reinwestowania środki po wykupie i kupony pozostają nieoprocentowane. Po włączeniu tej opcji przy terminowym wykupie kupujemy pełne obligacje za kapitał, zebrane kupony i resztę gotówki.</p><p>Przyszłe emisje symulujemy na warunkach obecnej oferty, po cenie 100 zł, bez dyskonta zamiany. ROS i ROD wymagają uprawnienia do 800+ oraz dostępnego limitu; nie są automatycznie kupowane ponownie.</p></section>
+            <section><h3>Założenia i daty</h3><p>Pierwszy okres korzysta ze stawki oferty. Kolejne z Twoich stałych założeń NBP lub inflacji. Niepełny rok liczymy według rzeczywistej liczby dni. Kupon kończący się w dniu wcześniejszego wykupu rozliczamy razem z wykupem.</p><p>Horyzont wskazuje dzień rozliczenia, bez doliczania pięciu dni roboczych od dyspozycji i przesunięć w święta. Odsetki zaokrąglamy do grosza za obligację, podatek w górę od wypłaty partii. Rozliczenie banku może różnić się terminem i zaokrągleniami. Kalkulator nie obejmuje IKE/IKZE.</p></section>
+          </div>
+        </details>
+      </main>
+      <footer className="page-width site-footer"><p>plBonds <span>·</span> Niezależny kalkulator obligacji skarbowych.</p><p>Dane z {formatDate(OFFER.verifiedAt)} <a href={OFFER.sourceUrl} target="_blank" rel="noopener noreferrer">obligacjeskarbowe.pl <ArrowUpRight size={13} aria-hidden="true" /></a></p></footer>
     </div>
   )
 }

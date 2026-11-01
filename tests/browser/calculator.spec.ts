@@ -10,10 +10,6 @@ test("amount updates results, comma decimals work, whole bonds and details recon
   await expect(page.locator("html")).toHaveAttribute("lang", "pl")
   const ots = page.getByTestId("bond-OTS")
   await expect(ots.getByTestId("profit")).toContainText("405,00")
-  if (test.info().project.name === "desktop") {
-    const label = await page.getByText("Porównaj obligacje", { exact: true }).boundingBox()
-    expect(label!.x).toBeGreaterThanOrEqual(0)
-  }
   await page.screenshot({ path: `test-results/default-${test.info().project.name}.png`, fullPage: true })
   const amount = page.getByLabel("Kwota inwestycji (PLN)")
   await amount.fill("199,99")
@@ -23,14 +19,14 @@ test("amount updates results, comma decimals work, whole bonds and details recon
   await expect(ots.getByTestId("breakdown")).toContainText("200,39")
   await expect(ots.getByTestId("breakdown")).toContainText("1 szt.")
   await expect(page.getByTestId("bond-ROD")).toHaveCount(0)
-  await page.getByRole("switch", { name: "Wyklucz obligacje rodzinne" }).click()
+  await page.getByRole("switch", { name: "Uwzględnij obligacje rodzinne" }).click()
   await expect(page.getByTestId("bond-ROD")).toHaveCount(1)
   await expect(page.getByTestId("bond-ROS")).toHaveCount(1)
-  if (test.info().project.name === "mobile") {
-    await page.locator('[aria-label="Porównanie obligacji"]').evaluate((element) => { element.scrollLeft = 0 })
-    const firstCard = await page.locator('[data-testid^="bond-"]').first().boundingBox()
-    expect(firstCard!.x).toBeGreaterThanOrEqual(0)
-    expect(firstCard!.x + firstCard!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+  const rows = page.locator('[data-testid^="bond-"]')
+  for (const row of await rows.all()) {
+    const box = await row.boundingBox()
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
   }
   expect(errors).toEqual([])
 })
@@ -44,6 +40,8 @@ test("horizon, inflation, NBP assumptions and reinvestment change results", asyn
   await nbp.press("Enter")
   await expect(ror).not.toHaveText(before)
   const slider = page.getByRole("slider")
+  await page.getByRole("button", { name: "3 lata", exact: true }).click()
+  await expect(slider).toHaveAttribute("aria-valuenow", "36")
   await slider.focus()
   await slider.press("Home")
   await expect(slider).toHaveAttribute("aria-valuenow", "1")

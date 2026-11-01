@@ -2,6 +2,8 @@
 
 Porównanie detalicznych obligacji skarbowych i symulacja wyniku po podatku oraz opłatach. Next.js, React, TypeScript; eksport statyczny do `out/`.
 
+Interfejs łączy formularz scenariusza z listą wyników posortowanych według zysku netto. Rozwinięcie wiersza pokazuje rozliczenie i dokumenty emisji. Na telefonie porównanie mieści się w szerokości ekranu.
+
 ## Uruchomienie
 
 Node.js 22.14+ i pnpm 11.25.0:

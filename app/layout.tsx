@@ -5,20 +5,20 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Kalkulator obligacji',
+  title: 'plBonds — kalkulator obligacji skarbowych',
   description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
   icons: {
     icon: '/icon.svg',
     shortcut: '/icon.svg',
   },
   openGraph: {
-    title: 'Kalkulator obligacji',
+    title: 'plBonds — kalkulator obligacji skarbowych',
     description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Kalkulator obligacji',
+    title: 'plBonds — kalkulator obligacji skarbowych',
     description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
   },
 }
