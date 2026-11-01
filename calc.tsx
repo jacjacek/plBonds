@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import type React from "react"
-import { ArrowUpRight, ChevronDown, ArrowRight } from "lucide-react"
+import { ArrowUpRight, ChevronDown, ArrowRight, SlidersHorizontal, Check } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 import { BONDS, OFFER, isOfferCurrent } from "@/lib/bonds"
 import { addMonths, calculateReturn, MAX_INVESTMENT } from "@/lib/calculator"
@@ -68,14 +68,19 @@ const BondsCalculator = () => {
   const formatDate = (date: string) => new Intl.DateTimeFormat("pl-PL", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${date}T00:00:00Z`))
   const bestProfit = Math.max(0, ...results.map((bond) => bond.profit))
   const money = (value: number) => formatCurrency(value).replace(/\s*zł$/, "")
+  const leader = results[0]
+  const years = monthsToWithdraw / 12
+  const horizonLabel = monthsToWithdraw % 12 === 0
+    ? `${years} ${years === 1 ? "rok" : years < 5 ? "lata" : "lat"}`
+    : `${monthsToWithdraw} mies.`
 
   return (
     <div className="bonds-app">
       <header className="site-header">
         <div className="page-width header-inner">
           <a className="wordmark" href="#" aria-label="plBonds — kalkulator obligacji">
-            <span className="brand-mark" aria-hidden="true"><i /><i /></span>
-            pl<span>Bonds</span>
+            <span className="brand-mark" aria-hidden="true">pl<span /></span>
+            <span className="brand-name">plBonds<span>Obligacje skarbowe</span></span>
           </a>
           <nav className="header-nav" aria-label="Nawigacja główna">
             <a href="#kalkulator" className="is-active">Kalkulator</a>
@@ -90,9 +95,8 @@ const BondsCalculator = () => {
       <main className="page-width" id="kalkulator">
         <section className="page-intro" aria-labelledby="page-title">
           <div>
-            <p className="eyebrow">Obligacje skarbowe</p>
-            <h1 id="page-title">Kalkulator obligacji</h1>
-            <p className="intro-copy">Porównaj ofertę. Sprawdź zysk po podatku i opłatach.</p>
+            <h1 id="page-title">Kalkulator obligacji<br /><span>skarbowych.</span></h1>
+            <p className="intro-copy">Porównaj zysk z aktualnej oferty. Z uwzględnieniem podatku i opłat za wcześniejszy wykup.</p>
           </div>
           <div className={`offer-meta ${!offerCurrent ? "offer-archived" : ""}`} role="status">
             <span className="offer-label"><span aria-hidden="true" /> Oferta · {OFFER.label}</span>
@@ -101,13 +105,13 @@ const BondsCalculator = () => {
           </div>
         </section>
 
-        <div className="calculator-layout">
-          <aside className="scenario-panel" aria-labelledby="scenario-title">
-            <div className="panel-heading"><h2 id="scenario-title">Twoje założenia</h2></div>
-            <div className="field investment-field">
-              <label htmlFor="investment">Kwota inwestycji <span className="sr-only">(PLN)</span></label>
+        <div className="calculator-workspace">
+          <section className="scenario-panel" aria-labelledby="scenario-title">
+            <div className="panel-heading"><h2 id="scenario-title">Twoja inwestycja</h2></div>
+            <div className={`field investment-field ${investmentRaw.replace(/\s/g, "").length > 8 ? "is-large" : ""}`}>
+              <label htmlFor="investment">Kwota inwestycji</label>
               <div className="input-wrap">
-                <input id="investment" type="text" inputMode="decimal" value={investmentRaw}
+                <input id="investment" aria-label="Kwota inwestycji (PLN)" type="text" inputMode="decimal" value={investmentRaw}
                   onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setInvestmentRaw(e.target.value) }}
                   onKeyDown={handleEnterBlur}
                   onBlur={() => {
@@ -120,12 +124,12 @@ const BondsCalculator = () => {
                   }} />
                 <span className="input-unit">zł</span>
               </div>
-              <p className="field-hint">Obligacje po 100 zł. Reszta zostaje w gotówce.</p>
+              <p className="field-hint">Jedna obligacja kosztuje 100 zł.</p>
             </div>
 
             <div className="field horizon-field">
-              <div className="field-line"><label htmlFor="horizon">Okres inwestycji</label><span className="horizon-value">{monthsToWithdraw} mies.</span></div>
-              <Slider id="horizon" aria-label="Okres inwestycji w miesiącach" className="horizon-slider"
+              <div className="field-line"><label htmlFor="horizon">Okres inwestycji</label><span className="horizon-value">{horizonLabel}</span></div>
+              <Slider id="horizon" aria-label="Okres inwestycji w miesiącach" aria-valuetext={horizonLabel} className="horizon-slider"
                 value={[monthsToWithdraw]} onValueChange={(value) => setMonthsToWithdraw(value[0])} min={1} max={144} step={1} />
               <div className="horizon-presets" aria-label="Szybki wybór okresu">
                 {[{ months: 12, label: "1 rok" }, { months: 36, label: "3 lata" }, { months: 120, label: "10 lat" }].map((preset) => (
@@ -134,76 +138,101 @@ const BondsCalculator = () => {
               </div>
             </div>
 
-            <div className="field-pair">
-              <div className="field">
-                <label htmlFor="inflation">Inflacja roczna</label>
-                <div className="input-wrap">
-                  <input id="inflation" aria-label="Założona przyszła inflacja roczna (%)" type="text" inputMode="decimal" value={inflationRaw}
-                    onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setInflationRaw(e.target.value) }}
-                    onKeyDown={handleEnterBlur} onBlur={() => {
-                      const parsed = Number.parseFloat(normalizeDecimal(inflationRaw))
-                      if (Number.isFinite(parsed)) {
-                        const value = Math.min(100, Math.max(-20, parsed))
-                        setInflation(value); setInflationRaw(String(value).replace(".", ","))
-                      } else setInflationRaw(String(inflation).replace(".", ","))
+            <details className="advanced-settings">
+              <summary><SlidersHorizontal size={18} aria-hidden="true" /><span>Dostosuj założenia<small>Inflacja {inflation.toLocaleString("pl-PL")}%, stopa NBP {nbpRate.toLocaleString("pl-PL")}%</small></span><ChevronDown size={18} aria-hidden="true" /></summary>
+              <div className="advanced-body">
+                <div className="field-pair">
+                  <div className="field">
+                    <label htmlFor="inflation">Inflacja roczna</label>
+                    <div className="input-wrap">
+                      <input id="inflation" aria-label="Założona przyszła inflacja roczna (%)" type="text" inputMode="decimal" value={inflationRaw}
+                        onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setInflationRaw(e.target.value) }}
+                        onKeyDown={handleEnterBlur} onBlur={() => {
+                          const parsed = Number.parseFloat(normalizeDecimal(inflationRaw))
+                          if (Number.isFinite(parsed)) {
+                            const value = Math.min(100, Math.max(-20, parsed))
+                            setInflation(value); setInflationRaw(String(value).replace(".", ","))
+                          } else setInflationRaw(String(inflation).replace(".", ","))
+                        }} />
+                      <span className="input-unit">%</span>
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="nbpRate">Stopa NBP</label>
+                    <div className="input-wrap">
+                      <input id="nbpRate" aria-label="Założona przyszła stopa NBP (%)" type="text" inputMode="decimal" value={nbpRateRaw}
+                        onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setNbpRateRaw(e.target.value) }}
+                        onKeyDown={handleEnterBlur} onBlur={() => {
+                          const parsed = Number.parseFloat(normalizeDecimal(nbpRateRaw))
+                          if (Number.isFinite(parsed)) {
+                            const value = Math.min(100, Math.max(0, parsed))
+                            setNbpRate(value); setNbpRateRaw(String(value).replace(".", ","))
+                          } else setNbpRateRaw(String(nbpRate).replace(".", ","))
+                        }} />
+                      <span className="input-unit">%</span>
+                    </div>
+                  </div>
+                  <p className="field-hint">Twoje założenia dla kolejnych okresów odsetkowych.</p>
+                </div>
+
+                <div className="field date-field">
+                  <label htmlFor="purchaseDate">Data zakupu</label>
+                  <input id="purchaseDate" type="date" min={OFFER.validFrom} max={OFFER.validTo} value={purchaseDate}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      if (value >= OFFER.validFrom && value <= OFFER.validTo) setPurchaseDate(value)
                     }} />
-                  <span className="input-unit">%</span>
+                </div>
+
+                <div className="scenario-options">
+                  <div className="option-row">
+                    <label htmlFor="reinvest"><span>Reinwestowanie po wykupie</span><small>Kolejny zakup po terminowym wykupie.</small></label>
+                    <input className="scenario-toggle" type="checkbox" role="switch" id="reinvest" checked={autoReinvest} onChange={(e) => setAutoReinvest(e.target.checked)} />
+                  </div>
+                  <div className="option-row">
+                    <label htmlFor="includeFamily"><span>Uwzględnij obligacje rodzinne</span><small>ROS i ROD · wymagany limit 800+.</small></label>
+                    <input className="scenario-toggle" type="checkbox" role="switch" id="includeFamily" checked={!excludeFamilyBonds} onChange={(e) => setExcludeFamilyBonds(!e.target.checked)} />
+                  </div>
                 </div>
               </div>
-              <div className="field">
-                <label htmlFor="nbpRate">Stopa NBP</label>
-                <div className="input-wrap">
-                  <input id="nbpRate" aria-label="Założona przyszła stopa NBP (%)" type="text" inputMode="decimal" value={nbpRateRaw}
-                    onChange={(e) => { if (e.target.value === "" || isPartialNumeric(e.target.value)) setNbpRateRaw(e.target.value) }}
-                    onKeyDown={handleEnterBlur} onBlur={() => {
-                      const parsed = Number.parseFloat(normalizeDecimal(nbpRateRaw))
-                      if (Number.isFinite(parsed)) {
-                        const value = Math.min(100, Math.max(0, parsed))
-                        setNbpRate(value); setNbpRateRaw(String(value).replace(".", ","))
-                      } else setNbpRateRaw(String(nbpRate).replace(".", ","))
-                    }} />
-                  <span className="input-unit">%</span>
-                </div>
-              </div>
-              <p className="field-hint">Twoje założenia dla kolejnych okresów odsetkowych.</p>
-            </div>
+            </details>
+            <div className="scenario-inclusions"><span><Check size={15} aria-hidden="true" /> Podatek 19%</span><span><Check size={15} aria-hidden="true" /> Opłaty za wykup</span></div>
+            <p className="scenario-footnote">Wyniki przeliczamy automatycznie. Założenia przyszłych stóp i inflacji możesz zmienić powyżej.</p>
+          </section>
 
-            <div className="field date-field">
-              <label htmlFor="purchaseDate">Data zakupu</label>
-              <input id="purchaseDate" type="date" min={OFFER.validFrom} max={OFFER.validTo} value={purchaseDate}
-                onChange={(event) => {
-                  const value = event.target.value
-                  if (value >= OFFER.validFrom && value <= OFFER.validTo) setPurchaseDate(value)
-                }} />
-            </div>
-
-            <div className="scenario-options">
-              <div className="option-row">
-                <label htmlFor="reinvest"><span>Reinwestowanie po wykupie</span><small>Kolejny zakup po terminowym wykupie.</small></label>
-                <input className="scenario-toggle" type="checkbox" role="switch" id="reinvest" checked={autoReinvest} onChange={(e) => setAutoReinvest(e.target.checked)} />
-              </div>
-              <div className="option-row">
-                <label htmlFor="includeFamily"><span>Uwzględnij obligacje rodzinne</span><small>ROS i ROD · wymagany limit 800+.</small></label>
-                <input className="scenario-toggle" type="checkbox" role="switch" id="includeFamily" checked={!excludeFamilyBonds} onChange={(e) => setExcludeFamilyBonds(!e.target.checked)} />
+          <section className="outcome-panel" aria-labelledby="outcome-title">
+            <div className="outcome-heading"><h2 id="outcome-title">Najwyższy wynik w tym scenariuszu</h2><span className="outcome-bond">{leader.name} <span>· {term(leader.maturityMonths)}</span></span></div>
+            <p className={`outcome-profit ${money(leader.profit).length > 17 ? "outcome-profit-long" : money(leader.profit).length > 11 ? "outcome-profit-medium" : ""}`}>{money(leader.profit)}<span> zł</span></p>
+            <p className="outcome-caption">zysku netto po {monthsToWithdraw} mies.</p>
+            <div className="outcome-total"><span>Łącznie z kapitałem</span><strong>{formatCurrency(leader.totalValue)}</strong></div>
+            <div className="profit-chart">
+              <div className="chart-heading"><span>Porównanie zysku netto</span><a href="#porownanie">Szczegóły <ArrowRight size={15} aria-hidden="true" /></a></div>
+              <div className="chart-rows">
+                {results.map((bond, idx) => (
+                  <div className={`chart-row ${idx === 0 ? "chart-leader" : ""}`} key={bond.name}>
+                    <div className="chart-row-heading"><span>{bond.name}<small>{term(bond.maturityMonths)}</small></span><span>{formatCurrency(bond.profit)}</span></div>
+                    <div className="chart-track" aria-hidden="true"><span style={{ width: `${bestProfit > 0 ? Math.max(0, bond.profit) / bestProfit * 100 : 0}%` }} /></div>
+                  </div>
+                ))}
               </div>
             </div>
-            <p className="scenario-footnote">Symulacja na zwykłym rachunku, z podatkiem 19% i opłatami za wykup.</p>
-          </aside>
+          </section>
+        </div>
 
-          <section className="results-section" aria-labelledby="results-title">
-            <div className="results-heading">
-              <div><p className="eyebrow">Twój scenariusz</p><h2 id="results-title">Porównanie wyników</h2></div>
-              <span className="results-count">{results.length} rodzajów obligacji</span>
-            </div>
-            <p className="results-context">{formatCurrency(investment)} <span aria-hidden="true">/</span> {monthsToWithdraw} mies. <span aria-hidden="true">/</span> po podatku i opłatach</p>
+        <section className="results-section" id="porownanie" aria-labelledby="results-title">
+          <div className="results-heading">
+            <div><p className="eyebrow">Szczegóły oferty</p><h2 id="results-title">Porównaj obligacje</h2></div>
+            <p className="results-context"><span>{formatCurrency(investment)} · {horizonLabel}</span><span>Od najwyższego zysku netto</span></p>
+          </div>
+          <div className="comparison-surface">
             <div className="comparison-head" aria-hidden="true"><span>Obligacja</span><span>Oprocentowanie¹</span><span>Zysk netto</span><span>Łączne środki</span><span /></div>
             <div className="bond-list" aria-label="Porównanie obligacji">
               {results.map((bond, idx) => (
                 <details key={bond.name} data-testid={`bond-${bond.name}`} className={`bond-row ${idx === 0 && bond.profit > 0 ? "leading-result" : ""}`}>
                   <summary className="bond-summary">
-                    <span className="bond-identity"><span className="bond-code">{bond.name}<span className="bond-term">{term(bond.maturityMonths)}</span></span><span className="bond-kind"><span className="kind-desktop">{bond.basedOnInflation ? "Indeksowane inflacją" : bond.basedOnNBP ? "Zmienne · stopa NBP" : "Stałe oprocentowanie"}</span><span className="kind-mobile">{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}% rocznie¹</span></span></span>
+                    <span className="bond-identity"><span className={`bond-symbol bond-color-${bond.name.toLowerCase()}`}>{bond.name}</span><span><span className="bond-term">{term(bond.maturityMonths)}</span><span className="bond-kind"><span className="kind-desktop">{bond.basedOnInflation ? "Indeksowane inflacją" : bond.basedOnNBP ? "Zmienne · stopa NBP" : "Stałe oprocentowanie"}</span><span className="kind-mobile">{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}% rocznie¹</span></span></span></span>
                     <span className="bond-rate"><span>{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}<small>%</small></span><span className="rate-period">{bond.variableRate ? (bond.basedOnNBP ? "pierwszy miesiąc" : "pierwszy rok") : "w skali roku"}</span></span>
-                    <span className={`bond-profit ${bond.profit < 0 ? "negative-value" : ""}`}><span className="mobile-profit-label">Zysk netto</span><span data-testid="profit">{money(bond.profit)}<small> zł</small></span><span className="profit-track" aria-hidden="true"><span style={{ width: `${bestProfit > 0 ? Math.max(0, bond.profit) / bestProfit * 100 : 0}%` }} /></span></span>
+                    <span className={`bond-profit ${bond.profit < 0 ? "negative-value" : ""} ${money(bond.profit).length > 12 ? "long-amount" : ""}`}><span className="mobile-profit-label">Zysk netto</span><span data-testid="profit">{money(bond.profit)}<small> zł</small></span>{idx === 0 && bond.profit > 0 && <span className="result-tag">Najwyższy wynik</span>}</span>
                     <span className="bond-total">{money(bond.totalValue)}<small> zł</small></span>
                     <ChevronDown className="row-chevron" size={17} aria-hidden="true" />
                   </summary>
@@ -240,10 +269,10 @@ const BondsCalculator = () => {
                 </details>
               ))}
             </div>
-            <div className="results-notes"><p>Posortowano według zysku netto. Rozwiń wiersz, aby zobaczyć rozliczenie.</p><p>¹ Stawka roczna. Dla obligacji zmiennych dotyczy pierwszego okresu odsetkowego.</p></div>
-            <div className="results-disclaimer"><span aria-hidden="true">i</span><p>To symulacja dla Twoich założeń. Przyszłe stopy procentowe i inflacja mogą zmienić wynik.</p></div>
-          </section>
-        </div>
+          </div>
+          <div className="results-notes"><p>Posortowano według zysku netto. Rozwiń wiersz, aby zobaczyć rozliczenie.</p><p>¹ Stawka roczna. Dla obligacji zmiennych dotyczy pierwszego okresu odsetkowego.</p></div>
+          <div className="results-disclaimer"><span aria-hidden="true">i</span><p>To symulacja dla Twoich założeń. Przyszłe stopy procentowe i inflacja mogą zmienić wynik.</p></div>
+        </section>
 
         <details className="methodology" id="zasady">
           <summary><span><span className="eyebrow">Zasady kalkulatora</span><span className="methodology-title">Jak liczymy wynik?</span></span><ChevronDown size={20} aria-hidden="true" /></summary>

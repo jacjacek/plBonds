@@ -15,10 +15,12 @@ test("amount updates results, comma decimals work, whole bonds and details recon
   await amount.fill("199,99")
   await amount.press("Enter")
   await expect(ots.getByTestId("profit")).toContainText("0,40")
+  await expect(page.locator(".outcome-profit")).toHaveText(await page.locator(".bond-row").first().getByTestId("profit").innerText())
   await ots.locator("summary").click()
   await expect(ots.getByTestId("breakdown")).toContainText("200,39")
   await expect(ots.getByTestId("breakdown")).toContainText("1 szt.")
   await expect(page.getByTestId("bond-ROD")).toHaveCount(0)
+  await page.locator(".advanced-settings > summary").click()
   await page.getByRole("switch", { name: "Uwzględnij obligacje rodzinne" }).click()
   await expect(page.getByTestId("bond-ROD")).toHaveCount(1)
   await expect(page.getByTestId("bond-ROS")).toHaveCount(1)
@@ -33,13 +35,15 @@ test("amount updates results, comma decimals work, whole bonds and details recon
 
 test("horizon, inflation, NBP assumptions and reinvestment change results", async ({ page }) => {
   await page.goto("/")
+  await page.locator(".advanced-settings > summary").click()
   const nbp = page.getByLabel("Założona przyszła stopa NBP (%)")
   const ror = page.getByTestId("bond-ROR").getByTestId("profit")
   const before = await ror.innerText()
   await nbp.fill("6")
   await nbp.press("Enter")
   await expect(ror).not.toHaveText(before)
-  const slider = page.getByRole("slider")
+  await expect(page.locator(".outcome-profit")).toHaveText(await page.locator(".bond-row").first().getByTestId("profit").innerText())
+  const slider = page.getByRole("slider", { name: "Okres inwestycji w miesiącach" })
   await page.getByRole("button", { name: "3 lata", exact: true }).click()
   await expect(slider).toHaveAttribute("aria-valuenow", "36")
   await slider.focus()
@@ -64,4 +68,24 @@ test("expired offer displays an archive warning in the exported static site", as
   await page.clock.setFixedTime(new Date("2026-12-05T12:00:00Z"))
   await page.goto("/")
   await expect(page.getByRole("status")).toContainText("Ta oferta jest archiwalna")
+})
+
+test("layout keeps controls and expanded calculations within narrow and tablet viewports", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop")
+  await page.goto("/")
+  await page.locator(".advanced-settings > summary").click()
+  await page.getByLabel("Kwota inwestycji (PLN)").fill("1000000000")
+  await page.getByLabel("Kwota inwestycji (PLN)").press("Enter")
+  await page.getByRole("button", { name: "10 lat", exact: true }).click()
+  await page.getByTestId("bond-EDO").locator("summary").click()
+  for (const width of [320, 768, 1024]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    for (const selector of [".scenario-panel", ".outcome-panel", ".comparison-surface", ".bond-details"]) {
+      const box = await page.locator(selector).filter({ visible: true }).first().boundingBox()
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+    }
+    await page.screenshot({ path: `test-results/responsive-${width}.png`, fullPage: true })
+  }
 })

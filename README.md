@@ -2,7 +2,7 @@
 
 Porównanie detalicznych obligacji skarbowych i symulacja wyniku po podatku oraz opłatach. Next.js, React, TypeScript; eksport statyczny do `out/`.
 
-Interfejs łączy formularz scenariusza z listą wyników posortowanych według zysku netto. Rozwinięcie wiersza pokazuje rozliczenie i dokumenty emisji. Na telefonie porównanie mieści się w szerokości ekranu.
+Interfejs pokazuje formularz inwestycji, najwyższy wynik scenariusza i wykres porównawczy. Inflacja, stopa NBP, data zakupu i opcje reinwestowania są w rozwijanych założeniach. Lista poniżej zawiera rozliczenia i dokumenty emisji. Wersja mobilna skupia się na wyniku i liście obligacji, bez powielania wykresu. Interfejs obsługuje klawiaturę i czytniki ekranu.
 
 ## Uruchomienie
 
