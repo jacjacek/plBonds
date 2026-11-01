@@ -6,8 +6,11 @@ import './globals.css'
 
 const newsreader = Newsreader({
   subsets: ['latin', 'latin-ext'],
+  axes: ['opsz'],
   variable: '--font-newsreader',
 })
+
+const themeScript = `try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}`
 
 export const metadata: Metadata = {
   title: 'plBonds — kalkulator obligacji skarbowych',
@@ -34,7 +37,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pl">
+    <html lang="pl" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className={`font-sans ${GeistSans.variable} ${newsreader.variable}`}>
         {children}
         {process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true' && <Analytics />}
