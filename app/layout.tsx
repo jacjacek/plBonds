@@ -1,7 +1,13 @@
 import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
+import { Newsreader } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+
+const newsreader = Newsreader({
+  subsets: ['latin', 'latin-ext'],
+  variable: '--font-newsreader',
+})
 
 export const metadata: Metadata = {
   title: 'plBonds — kalkulator obligacji skarbowych',
@@ -29,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl">
-      <body className={`font-sans ${GeistSans.variable}`}>
+      <body className={`font-sans ${GeistSans.variable} ${newsreader.variable}`}>
         {children}
         {process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true' && <Analytics />}
       </body>
