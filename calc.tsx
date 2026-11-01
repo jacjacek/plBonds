@@ -2,13 +2,10 @@
 
 import { useState, useMemo } from "react"
 import type React from "react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 
 const TAX_RATE = 0.19
 const BOND_NOMINAL_VALUE = 100
@@ -55,6 +52,51 @@ interface CalculationResult {
   effectiveRate: number
   purchaseRounds: PurchaseRound[]
 }
+
+const bondTone = (bond: Pick<Bond, "name" | "typeLabel">) => {
+  if (bond.typeLabel === "STAŁOPROCENTOWE") return { text: "text-bond-fixed", dot: "bg-bond-fixed" }
+  if (bond.typeLabel === "ZMIENNOPROCENTOWE") return { text: "text-bond-variable", dot: "bg-bond-variable" }
+  if (bond.name === "ROS" || bond.name === "ROD") return { text: "text-bond-family", dot: "bg-bond-family" }
+  return { text: "text-bond-indexed", dot: "bg-bond-indexed" }
+}
+
+const DotGrid = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
+    {Array.from({ length: 36 }, (_, i) => (
+      <circle key={i} cx={10 + (i % 6) * 20} cy={10 + Math.floor(i / 6) * 20} r="1.75" fill="#4578EE" opacity="0.55" />
+    ))}
+  </svg>
+)
+
+const HeroMotif = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 220 170" className={className} aria-hidden="true">
+    {Array.from({ length: 30 }, (_, i) => (
+      <circle
+        key={i}
+        cx={118 + (i % 6) * 18}
+        cy={68 + Math.floor(i / 6) * 18}
+        r="1.75"
+        fill="#4578EE"
+        opacity="0.55"
+      />
+    ))}
+    <rect x="6" y="8" width="24" height="24" fill="#4578EE" opacity="0.55" />
+    <rect x="150" y="0" width="40" height="40" fill="#0033CC" />
+    <rect x="0" y="108" width="58" height="30" fill="#FF0921" opacity="0.85" />
+    {[24, 62, 100].map((y) => (
+      <g key={y}>
+        <rect x="26" y={y} width="170" height="24" fill="#F0F0EB" opacity="0.08" />
+        <path
+          d={`M34 ${y + 6}l12 12m0-12l-12 12`}
+          stroke="#DDEC61"
+          strokeWidth="2.5"
+          strokeLinecap="square"
+          fill="none"
+        />
+      </g>
+    ))}
+  </svg>
+)
 
 const BondsCalculator = () => {
   const [monthsToWithdraw, setMonthsToWithdraw] = useState(12)
@@ -513,7 +555,7 @@ const BondsCalculator = () => {
         ...calculateReturn(bond),
       }))
       .sort((a, b) => b.profit - a.profit)
-  }, [monthsToWithdraw, inflation, nbpRate, autoReinvest, excludeFamilyBonds])
+  }, [investment, monthsToWithdraw, inflation, nbpRate, autoReinvest, excludeFamilyBonds])
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat("pl-PL", {
@@ -524,35 +566,75 @@ const BondsCalculator = () => {
     }).format(value)
   }
 
+  const formatDecimal = (value: number): string => value.toFixed(2).replace(".", ",")
+
+  const bestBond = results[0]
+  const cellClass = "border-b border-border p-4 h-20 flex items-center"
+  const labelClass = "text-sm font-medium text-muted-foreground"
+  const panelClass = "rounded-[20px] border border-border bg-card"
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#0033CC] flex items-center justify-center text-white font-bold text-xl">
-              OS
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Obligacje Skarbowe</h1>
-              <p className="text-sm text-gray-600">Kalkulator porównawczy</p>
-            </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="max-w-7xl mx-auto px-4 md:px-6 py-6 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-0.5 h-10 bg-gradient-to-b from-bond-variable/40 to-[#0033CC]" aria-hidden="true" />
+          <div>
+            <p className="text-sm font-medium leading-tight">
+              Obligacje
+              <br />
+              Skarbowe
+            </p>
           </div>
         </div>
-      </div>
+        <nav className="flex items-center gap-6 text-sm">
+          <a href="#kalkulator" className="hidden sm:block hover:text-muted-foreground transition-colors">
+            Kalkulator
+          </a>
+          <a href="#tabela" className="hidden sm:block hover:text-muted-foreground transition-colors">
+            Porównanie
+          </a>
+          <a
+            href="https://www.obligacjeskarbowe.pl/oferta/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center h-9 px-4 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+          >
+            Oficjalna oferta
+          </a>
+        </nav>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        <div className="space-y-3">
-          <h2 className="text-4xl font-bold text-gray-900">Tabela porównawcza</h2>
-          <p className="text-lg text-gray-600 max-w-3xl">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pb-16 space-y-6">
+        <section className="relative pt-12 pb-16 md:pt-24 md:pb-24 text-center">
+          <HeroMotif className="hidden xl:block absolute left-0 top-16 w-52 -scale-x-100" />
+          <HeroMotif className="hidden xl:block absolute right-0 top-16 w-52" />
+          <h1 className="font-serif font-light text-5xl md:text-7xl lg:text-[84px] leading-[0.95] tracking-[-0.04em]">
+            Tabela porównawcza
+          </h1>
+          <p className="mt-6 text-lg leading-snug tracking-tight text-muted-foreground max-w-2xl mx-auto">
             Obligacje skarbowe – oprocentowanie, rodzaje. Zastanawiasz się, jakie wybrać? Poznaj rodzaje obligacji
             skarbowych. Porównaj aktualną ofertę obligacji Skarbu Państwa i wybierz najlepszy dla siebie wariant
           </p>
-        </div>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+            <a
+              href="#kalkulator"
+              className="inline-flex items-center h-12 px-6 rounded-[20px] bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors"
+            >
+              Policz zysk
+            </a>
+            <a
+              href="#tabela"
+              className="inline-flex items-center h-12 px-6 rounded-[20px] bg-secondary text-sm font-medium hover:bg-secondary/70 transition-colors"
+            >
+              Porównaj obligacje
+            </a>
+          </div>
+        </section>
 
-        <Card className="border shadow-sm rounded-none">
-          <CardContent className="p-6 space-y-6">
+        <section id="kalkulator" className="scroll-mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className={`${panelClass} lg:col-span-2 p-6 md:p-8 space-y-8`}>
             <div className="space-y-2">
-              <Label htmlFor="investment" className="text-base font-semibold">
+              <Label htmlFor="investment" className={labelClass}>
                 Kwota inwestycji (PLN)
               </Label>
               <Input
@@ -578,18 +660,18 @@ const BondsCalculator = () => {
                     setInvestmentRaw(String(investment).replace(".", ","))
                   }
                 }}
-                className="rounded-none text-lg font-semibold"
+                className="h-16 rounded-lg px-4 font-serif text-4xl md:text-4xl tracking-tight"
               />
-              <p className="text-sm text-gray-600">Minimalna kwota: 100 PLN</p>
+              <p className="text-xs text-muted-foreground">Minimalna kwota: 100 PLN</p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">Okres inwestycji</Label>
-                <Badge variant="secondary" className="text-base font-semibold px-4 py-1 rounded-none">
+                <Label className={labelClass}>Okres inwestycji</Label>
+                <span className="text-sm font-medium tabular-nums">
                   {monthsToWithdraw}{" "}
                   {monthsToWithdraw === 1 ? "miesiąc" : monthsToWithdraw < 5 ? "miesiące" : "miesięcy"}
-                </Badge>
+                </span>
               </div>
               <Slider
                 value={[monthsToWithdraw]}
@@ -601,29 +683,9 @@ const BondsCalculator = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-none border bg-gray-50">
-              <div>
-                <Label htmlFor="reinvest" className="text-base font-medium cursor-pointer">
-                  Automatyczne reinwestowanie
-                </Label>
-                <p className="text-sm text-gray-600">Kupuj kolejne emisje po wykupie</p>
-              </div>
-              <Switch id="reinvest" checked={autoReinvest} onCheckedChange={setAutoReinvest} />
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-none border bg-gray-50">
-              <div>
-                <Label htmlFor="excludeFamily" className="text-base font-medium cursor-pointer">
-                  Wyklucz obligacje rodzinne (ROD, ROS)
-                </Label>
-                <p className="text-sm text-gray-600">Obligacje ROD i ROS są dostępne tylko dla rodzin z dziećmi</p>
-              </div>
-              <Switch id="excludeFamily" checked={excludeFamilyBonds} onCheckedChange={setExcludeFamilyBonds} />
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="inflation" className="text-sm font-medium">
+                <Label htmlFor="inflation" className={labelClass}>
                   Inflacja roczna (%)
                 </Label>
                 <Input
@@ -648,11 +710,11 @@ const BondsCalculator = () => {
                       setInflationRaw(String(inflation).replace(".", ","))
                     }
                   }}
-                  className="rounded-none"
+                  className="h-11 rounded-lg px-4"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nbpRate" className="text-sm font-medium">
+                <Label htmlFor="nbpRate" className={labelClass}>
                   Stopa referencyjna NBP (%)
                 </Label>
                 <Input
@@ -677,131 +739,165 @@ const BondsCalculator = () => {
                       setNbpRateRaw(String(nbpRate).replace(".", ","))
                     }
                   }}
-                  className="rounded-none"
+                  className="h-11 rounded-lg px-4"
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="bg-white border rounded-none shadow-sm overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between gap-4 p-4 rounded-lg bg-secondary">
+                <div>
+                  <Label htmlFor="reinvest" className="text-sm font-medium cursor-pointer">
+                    Automatyczne reinwestowanie
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground">Kupuj kolejne emisje po wykupie</p>
+                </div>
+                <Switch id="reinvest" checked={autoReinvest} onCheckedChange={setAutoReinvest} />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 p-4 rounded-lg bg-secondary">
+                <div>
+                  <Label htmlFor="excludeFamily" className="text-sm font-medium cursor-pointer">
+                    Wyklucz obligacje rodzinne (ROD, ROS)
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Obligacje ROD i ROS są dostępne tylko dla rodzin z dziećmi
+                  </p>
+                </div>
+                <Switch id="excludeFamily" checked={excludeFamilyBonds} onCheckedChange={setExcludeFamilyBonds} />
+              </div>
+            </div>
+          </div>
+
+          <aside className={`${panelClass} relative overflow-hidden p-6 md:p-8 flex flex-col justify-between gap-10`}>
+            <DotGrid className="absolute -right-6 -top-6 w-44 opacity-60" />
+            <p className={`${labelClass} relative`}>Najwyższy zysk po {monthsToWithdraw} mies.</p>
+            <div className="relative">
+              <p className="font-serif font-light text-5xl tracking-tight text-primary leading-none tabular-nums">
+                {formatCurrency(bestBond.profit)}
+              </p>
+              <p className="mt-4 text-sm font-medium">{bestBond.displayName}</p>
+              <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <span className={`size-1.5 rounded-full ${bondTone(bestBond).dot}`} aria-hidden="true" />
+                {bestBond.series} · {formatDecimal(bestBond.interestRate)}%
+              </p>
+            </div>
+          </aside>
+        </section>
+
+        <section id="tabela" className={`${panelClass} scroll-mt-6 overflow-hidden`}>
           <div className="overflow-x-auto">
             <div className="inline-flex min-w-full">
-              <div className="flex-shrink-0 w-64 border-r bg-gray-50">
-                <div className="h-80 border-b flex items-center justify-center">
-                  <div className="text-center px-4">
-                    <p className="text-sm text-gray-500 mb-2">Porównaj obligacje</p>
-                  </div>
+              <div className="flex-shrink-0 w-36 md:w-52 md:sticky left-0 z-10 border-r border-border bg-card">
+                <div className="h-[22rem] border-b border-border p-4 flex items-end">
+                  <p className="font-serif text-2xl leading-tight tracking-tight">Porównaj obligacje</p>
                 </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Cena zakupu</p>
+                <div className={cellClass}>
+                  <p className={labelClass}>Cena zakupu</p>
                 </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Odsetki</p>
+                <div className={cellClass}>
+                  <p className={labelClass}>Odsetki</p>
                 </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Okres oprocentowania</p>
+                <div className={cellClass}>
+                  <p className={labelClass}>Okres oprocentowania</p>
                 </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Cena zamiany</p>
+                <div className={cellClass}>
+                  <p className={labelClass}>Cena zamiany</p>
                 </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Wcześniejszy wykup</p>
+                <div className={cellClass}>
+                  <p className={labelClass}>Wcześniejszy wykup</p>
                 </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Opłata za wykup</p>
+                <div className={cellClass}>
+                  <p className={labelClass}>Opłata za wykup</p>
                 </div>
-                <div className="border-b p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Warunki wykupu</p>
+                <div className={cellClass}>
+                  <p className={labelClass}>Warunki wykupu</p>
                 </div>
-                <div className="border-b p-4 h-32 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Zalety</p>
+                <div className="border-b border-border p-4 h-36 flex items-center">
+                  <p className={labelClass}>Zalety</p>
                 </div>
-                <div className="p-4 h-20 flex items-center">
-                  <p className="text-sm font-semibold text-[#0033CC]">Zysk po {monthsToWithdraw} mies.</p>
+                <div className="p-4 h-32 flex items-center">
+                  <p className={labelClass}>Zakup</p>
                 </div>
               </div>
 
               {results.map((bond, idx) => (
-                <div key={bond.name} className={`flex-shrink-0 w-64 ${idx < results.length - 1 ? "border-r" : ""}`}>
-                  <div className="h-80 border-b p-6 flex flex-col justify-between bg-white">
+                <div
+                  key={bond.name}
+                  className={`flex-shrink-0 w-64 ${idx < results.length - 1 ? "border-r border-border" : ""}`}
+                >
+                  <div className="h-[22rem] border-b border-border p-5 flex flex-col justify-between">
                     <div className="space-y-3">
-                      <div className="bg-green-50 border-2 border-green-500 p-3 rounded-none">
-                        <p className="text-xs text-green-700 font-semibold mb-1">ZYSK PO {monthsToWithdraw} MIES.</p>
-                        <p className="text-2xl font-bold text-green-600">{formatCurrency(bond.profit)}</p>
-                      </div>
-                      <div
-                        className={`text-5xl font-bold ${
-                          bond.typeLabel === "STAŁOPROCENTOWE"
-                            ? "text-red-600"
-                            : bond.typeLabel === "ZMIENNOPROCENTOWE"
-                              ? "text-blue-600"
-                              : "text-purple-600"
-                        }`}
-                      >
-                        {bond.interestRate.toFixed(2)}%
-                      </div>
-                      <h3 className="text-base font-bold text-gray-900 leading-tight">{bond.displayName}</h3>
-                      <Badge
-                        variant="outline"
-                        className={`font-semibold text-xs rounded-none ${
-                          bond.typeLabel === "STAŁOPROCENTOWE"
-                            ? "text-red-600 border-red-600 bg-red-50"
-                            : bond.typeLabel === "ZMIENNOPROCENTOWE"
-                              ? "text-blue-600 border-blue-600 bg-blue-50"
-                              : "text-purple-600 border-purple-600 bg-purple-50"
-                        }`}
-                      >
+                      <p className={`flex items-center gap-2 text-[11px] font-medium tracking-wide ${bondTone(bond).text}`}>
+                        <span className={`size-1.5 rounded-full ${bondTone(bond).dot}`} aria-hidden="true" />
                         {bond.typeLabel}
-                      </Badge>
-                      <p className="text-xs text-gray-600">
-                        <span className="font-semibold">Seria:</span> {bond.series}
+                      </p>
+                      <div className="font-serif font-light text-6xl tracking-tight tabular-nums">
+                        {formatDecimal(bond.interestRate)}%
+                      </div>
+                      <h3 className="text-base font-medium leading-tight">{bond.displayName}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Seria: <span className="font-mono">{bond.series}</span>
+                      </p>
+                    </div>
+                    <div
+                      className={`rounded-lg p-3 ${idx === 0 ? "bg-primary text-primary-foreground" : "bg-secondary"}`}
+                    >
+                      <p className={`text-xs mb-1 ${idx === 0 ? "" : "text-muted-foreground"}`}>
+                        Zysk po {monthsToWithdraw} mies.
+                      </p>
+                      <p
+                        className={`font-serif text-2xl tracking-tight tabular-nums ${
+                          bond.profit < 0 ? "text-bond-fixed" : ""
+                        }`}
+                      >
+                        {formatCurrency(bond.profit)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center">{bond.purchasePrice.toFixed(2)} zł</p>
+                  <div className={cellClass}>
+                    <p className="text-sm font-medium tabular-nums">{formatDecimal(bond.purchasePrice)} zł</p>
                   </div>
 
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-xs text-center leading-relaxed">{bond.interestDetails}</p>
+                  <div className={cellClass}>
+                    <p className="text-xs leading-relaxed">{bond.interestDetails}</p>
                   </div>
 
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-xs text-center">{bond.interestPeriod}</p>
+                  <div className={cellClass}>
+                    <p className="text-xs tabular-nums">{bond.interestPeriod}</p>
                   </div>
 
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center">
+                  <div className={cellClass}>
+                    <p className="text-sm font-medium tabular-nums">
                       {typeof bond.exchangePrice === "number"
-                        ? `${bond.exchangePrice.toFixed(2)} zł`
+                        ? `${formatDecimal(bond.exchangePrice)} zł`
                         : bond.exchangePrice}
                     </p>
                   </div>
 
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm font-semibold text-center">{bond.earlyWithdrawalPossible ? "Tak" : "Nie"}</p>
+                  <div className={cellClass}>
+                    <p className="text-sm font-medium">{bond.earlyWithdrawalPossible ? "Tak" : "Nie"}</p>
                   </div>
 
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-sm text-center">{bond.withdrawalFee}</p>
+                  <div className={cellClass}>
+                    <p className="text-sm">{bond.withdrawalFee}</p>
                   </div>
 
-                  <div className="border-b p-4 h-20 flex items-center justify-center">
-                    <p className="text-xs text-center">{bond.withdrawalConditions}</p>
+                  <div className={cellClass}>
+                    <p className="text-xs">{bond.withdrawalConditions}</p>
                   </div>
 
-                  <div className="border-b p-4 h-32 flex items-center">
-                    <p className="text-xs text-gray-700 text-center leading-relaxed">{bond.advantages}</p>
+                  <div className="border-b border-border p-4 h-36 flex items-center">
+                    <p className="text-xs text-muted-foreground leading-relaxed">{bond.advantages}</p>
                   </div>
 
-                  <div className="px-4 pb-4 pt-4 space-y-2">
+                  <div className="p-4 h-32 flex flex-col justify-center gap-2">
                     <a
                       href={bond.buyUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full inline-flex items-center justify-center bg-[#0033CC] hover:bg-[#0029AA] text-white font-semibold rounded-none h-10"
+                      className="w-full inline-flex items-center justify-center bg-[#0033CC] hover:bg-[#1F4FE0] text-white text-sm font-medium rounded-[20px] h-10 transition-colors"
                     >
                       Kup
                     </a>
@@ -809,7 +905,7 @@ const BondsCalculator = () => {
                       href={bond.detailsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block text-center text-sm text-[#0033CC] hover:underline font-medium"
+                      className="block text-center text-sm text-muted-foreground hover:text-foreground font-medium transition-colors"
                     >
                       Szczegóły →
                     </a>
@@ -818,34 +914,36 @@ const BondsCalculator = () => {
               ))}
             </div>
           </div>
-        </div>
+        </section>
 
-        <Card className="border shadow-sm bg-blue-50 rounded-none">
-          <CardContent className="p-6">
-            <h4 className="text-lg font-semibold mb-4 text-gray-900">Informacje dodatkowe</h4>
-            <div className="space-y-2 text-sm text-gray-700">
-              <p>• Wszystkie obliczenia uwzględniają podatek Belki (19%)</p>
-              <p>• Inwestycja bazowa: {formatCurrency(investment)}</p>
-              <p>
-                • Obligacje zmiennoprocentowe (ROR, DOR) dostosowują się do stopy referencyjnej NBP (obecnie{" "}
-                {nbpRate.toFixed(2)}%)
+        <section className={`${panelClass} p-6 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6`}>
+          <h2 className="font-serif font-light text-3xl tracking-tight">Informacje dodatkowe</h2>
+          <div className="lg:col-span-2 space-y-2 text-sm text-muted-foreground">
+            <p>• Wszystkie obliczenia uwzględniają podatek Belki (19%)</p>
+            <p>• Inwestycja bazowa: {formatCurrency(investment)}</p>
+            <p>
+              • Obligacje zmiennoprocentowe (ROR, DOR) dostosowują się do stopy referencyjnej NBP (obecnie{" "}
+              {formatDecimal(nbpRate)}%)
+            </p>
+            <p>
+              • Obligacje indeksowane inflacją (COI, ROS, EDO, ROD) chronią przed inflacją (założona: {String(inflation).replace(".", ",")}%)
+            </p>
+            {autoReinvest && (
+              <p className="font-medium text-foreground">
+                • Z włączonym reinwestowaniem, po wykupie obligacji całość kapitału jest automatycznie inwestowana w
+                kolejną emisję
               </p>
-              <p>
-                • Obligacje indeksowane inflacją (COI, ROS, EDO, ROD) chronią przed inflacją (założona: {inflation}%)
-              </p>
-              {autoReinvest && (
-                <p className="font-medium">
-                  • Z włączonym reinwestowaniem, po wykupie obligacji całość kapitału jest automatycznie inwestowana w
-                  kolejną emisję
-                </p>
-              )}
-              {excludeFamilyBonds && (
-                <p className="font-medium">• Obligacje rodzinne (ROD, ROS) zostały wyłączone z obliczeń</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            )}
+            {excludeFamilyBonds && (
+              <p className="font-medium text-foreground">• Obligacje rodzinne (ROD, ROS) zostały wyłączone z obliczeń</p>
+            )}
+          </div>
+        </section>
+
+        <footer className="pt-4 text-xs text-muted-foreground">
+          Niezależny kalkulator – nie jest oficjalnym serwisem Ministerstwa Finansów.
+        </footer>
+      </main>
     </div>
   )
 }
