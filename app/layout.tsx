@@ -7,23 +7,19 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Kalkulator obligacji',
   description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
-  generator: 'Vibecoded, do not trust it',
   icons: {
-    icon: '/thumbnail.png',
-    apple: '/thumbnail.png',
-    shortcut: '/thumbnail.png',
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
   },
   openGraph: {
     title: 'Kalkulator obligacji',
     description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
     type: 'website',
-    images: ['/thumbnail.png'],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: 'Kalkulator obligacji',
     description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
-    images: ['/thumbnail.png'],
   },
 }
 
@@ -33,10 +29,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="pl">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         {children}
-        <Analytics />
+        {process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true' && <Analytics />}
       </body>
     </html>
   )
