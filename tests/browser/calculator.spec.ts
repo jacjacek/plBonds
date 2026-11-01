@@ -1,0 +1,112 @@
+import { test, expect } from "@playwright/test"
+
+test("amount updates results, comma decimals work, whole bonds and details reconcile", async ({ page }) => {
+  const errors: string[] = []
+  page.on("pageerror", (error) => errors.push(error.message))
+  page.on("response", (response) => {
+    if (response.url().startsWith("http://127.0.0.1:3000") && response.status() >= 400) errors.push(`${response.status()} ${response.url()}`)
+  })
+  await page.goto("/")
+  await expect(page.locator("html")).toHaveAttribute("lang", "pl")
+  await expect(page.getByText("Projekt niezależny od Ministerstwa Finansów i banków.", { exact: true })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Kup", exact: true })).toHaveCount(0)
+  for (const link of await page.locator(".issuer-link").all()) {
+    expect(await link.getAttribute("href")).toMatch(/^https:\/\/www\.obligacjeskarbowe\.pl\/oferta-obligacji\//)
+  }
+  const ots = page.getByTestId("bond-OTS")
+  await expect(ots.getByTestId("profit")).toContainText("405,00")
+  await page.screenshot({ path: `test-results/default-${test.info().project.name}.png`, fullPage: true })
+  const amount = page.getByLabel("Kwota inwestycji (PLN)")
+  await amount.fill("199,99")
+  await amount.press("Enter")
+  await expect(ots.getByTestId("profit")).toContainText("0,40")
+  await expect(page.locator(".outcome-profit")).toHaveText(await page.locator(".bond-row.leading-result").getByTestId("profit").innerText())
+  await ots.locator("summary").click()
+  await expect(ots.getByTestId("breakdown")).toContainText("200,39")
+  await expect(ots.getByTestId("breakdown")).toContainText("1 szt.")
+  await expect(page.getByTestId("bond-ROD")).toHaveCount(0)
+  await page.locator(".advanced-settings > summary").click()
+  await page.getByRole("switch", { name: "Uwzględnij obligacje rodzinne" }).click()
+  await expect(page.getByTestId("bond-ROD")).toHaveCount(1)
+  await expect(page.getByTestId("bond-ROS")).toHaveCount(1)
+  const rows = page.locator('[data-testid^="bond-"]')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width)
+  for (const row of page.viewportSize()!.width <= 700 ? await rows.all() : []) {
+    const box = await row.boundingBox()
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+  }
+  expect(errors).toEqual([])
+})
+
+test("horizon, inflation, NBP assumptions and reinvestment change results", async ({ page }) => {
+  await page.goto("/")
+  await page.locator(".advanced-settings > summary").click()
+  const nbp = page.getByLabel("Założona przyszła stopa NBP (%)")
+  const ror = page.getByTestId("bond-ROR").getByTestId("profit")
+  const before = await ror.innerText()
+  await nbp.fill("6")
+  await nbp.press("Enter")
+  await expect(ror).not.toHaveText(before)
+  await expect(page.locator(".outcome-profit")).toHaveText(await page.locator(".bond-row.leading-result").getByTestId("profit").innerText())
+  const slider = page.getByRole("slider", { name: "Okres inwestycji w miesiącach" })
+  await page.getByRole("button", { name: "3 lata", exact: true }).click()
+  await expect(slider).toHaveAttribute("aria-valuenow", "36")
+  await slider.focus()
+  await slider.press("Home")
+  await expect(slider).toHaveAttribute("aria-valuenow", "1")
+  await expect(page.getByTestId("bond-EDO").getByTestId("profit")).toContainText("0,00")
+  await slider.press("End")
+  await expect(slider).toHaveAttribute("aria-valuenow", "144")
+  const edo = page.getByTestId("bond-EDO").getByTestId("profit")
+  const previous = await edo.innerText()
+  await page.getByLabel("Założona przyszła inflacja roczna (%)").fill("-2")
+  await page.getByLabel("Założona przyszła inflacja roczna (%)").press("Enter")
+  await expect(edo).not.toHaveText(previous)
+  const ots = page.getByTestId("bond-OTS").getByTestId("profit")
+  const old = await ots.innerText()
+  await page.getByRole("switch", { name: "Reinwestowanie po wykupie" }).click()
+  await expect(ots).not.toHaveText(old)
+  await page.screenshot({ path: `test-results/calculator-${test.info().project.name}.png`, fullPage: true })
+})
+
+test("expired offer displays an archive warning in the exported static site", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-12-05T12:00:00Z"))
+  await page.goto("/")
+  await expect(page.getByRole("status")).toContainText("Ta oferta jest archiwalna")
+})
+
+test("layout keeps controls and expanded calculations within narrow and tablet viewports", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop")
+  await page.goto("/")
+  await page.locator(".advanced-settings > summary").click()
+  await page.getByLabel("Kwota inwestycji (PLN)").fill("1000000000")
+  await page.getByLabel("Kwota inwestycji (PLN)").press("Enter")
+  await page.getByRole("button", { name: "10 lat", exact: true }).click()
+  await page.getByTestId("bond-EDO").locator("summary").click()
+  for (const width of [320, 768, 1024]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    for (const selector of [".scenario-panel", ".outcome-panel", ".comparison-surface"]) {
+      const box = await page.locator(selector).filter({ visible: true }).first().boundingBox()
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+    }
+    const detailBox = await page.getByTestId("bond-EDO").locator(".bond-details").boundingBox()
+    const cardBox = await page.getByTestId("bond-EDO").boundingBox()
+    expect(detailBox!.width).toBeLessThanOrEqual(cardBox!.width)
+    await page.screenshot({ path: `test-results/responsive-${width}.png`, fullPage: true })
+  }
+})
+
+
+test("offer keeps the original order and can be navigated horizontally", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop")
+  await page.goto("/")
+  expect(await page.locator('[data-testid^="bond-"]').evaluateAll((cards) => cards.map((card) => card.getAttribute("data-testid")))).toEqual(["bond-OTS", "bond-ROR", "bond-DOR", "bond-TOS", "bond-COI", "bond-EDO"])
+  const table = page.getByRole("region", { name: "Tabela porównawcza obligacji — przewijana poziomo" })
+  await page.getByRole("button", { name: "Następne obligacje" }).click()
+  await expect.poll(() => table.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+  await page.getByRole("button", { name: "Poprzednie obligacje" }).click()
+  await expect.poll(() => table.evaluate((element) => element.scrollLeft)).toBe(0)
+})

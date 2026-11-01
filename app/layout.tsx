@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
 import { Newsreader } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
@@ -11,25 +10,21 @@ const newsreader = Newsreader({
 })
 
 export const metadata: Metadata = {
-  title: 'Kalkulator obligacji',
-  description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
-  generator: 'Vibecoded, do not trust it',
+  title: 'plBonds — kalkulator obligacji skarbowych',
+  description: 'Niezależny kalkulator obligacji skarbowych. Porównaj zysk po podatku i opłatach.',
   icons: {
-    icon: '/thumbnail.png',
-    apple: '/thumbnail.png',
-    shortcut: '/thumbnail.png',
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
   },
   openGraph: {
-    title: 'Kalkulator obligacji',
-    description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
+    title: 'plBonds — kalkulator obligacji skarbowych',
+    description: 'Niezależny kalkulator obligacji skarbowych. Porównaj zysk po podatku i opłatach.',
     type: 'website',
-    images: ['/thumbnail.png'],
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'Kalkulator obligacji',
-    description: 'Kalkulator zwrotu z polskich obligacji skarbowych',
-    images: ['/thumbnail.png'],
+    card: 'summary',
+    title: 'plBonds — kalkulator obligacji skarbowych',
+    description: 'Niezależny kalkulator obligacji skarbowych. Porównaj zysk po podatku i opłatach.',
   },
 }
 
@@ -39,10 +34,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} ${newsreader.variable}`}>
+    <html lang="pl">
+      <body className={`font-sans ${GeistSans.variable} ${newsreader.variable}`}>
         {children}
-        <Analytics />
+        {process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true' && <Analytics />}
       </body>
     </html>
   )

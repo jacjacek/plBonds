@@ -16,3 +16,8 @@ pnpm-debug.log*
 
 # Env
 .env*
+
+# Verification artifacts
+*.tsbuildinfo
+test-results/
+playwright-report/
