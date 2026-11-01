@@ -2,7 +2,7 @@
 
 Porównanie detalicznych obligacji skarbowych i symulacja wyniku po podatku oraz opłatach. Next.js, React, TypeScript; eksport statyczny do `out/`.
 
-Interfejs pokazuje formularz inwestycji, najwyższy wynik scenariusza i wykres porównawczy. Inflacja, stopa NBP, data zakupu i opcje reinwestowania są w rozwijanych założeniach. Lista poniżej zawiera rozliczenia i dokumenty emisji. Wersja mobilna skupia się na wyniku i liście obligacji, bez powielania wykresu. Interfejs obsługuje klawiaturę i czytniki ekranu.
+Układ nawiązuje do [oficjalnej tabeli porównawczej](https://www.obligacjeskarbowe.pl/oferta/): jasne tło, prostokątne karty, kolorowe stawki i poziome porównanie z zachowaniem kolejności oferty. Formularz nad tabelą przelicza wynik po podatku i opłatach. Na telefonie karty układają się pionowo, a szczegóły i rozliczenie można rozwinąć. Fonty Poppins i Roboto są przechowywane lokalnie wraz z licencjami OFL, a ilustracja jest lokalnym plikiem SVG.
 
 ## Uruchomienie
 

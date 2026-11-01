@@ -15,7 +15,7 @@ test("amount updates results, comma decimals work, whole bonds and details recon
   await amount.fill("199,99")
   await amount.press("Enter")
   await expect(ots.getByTestId("profit")).toContainText("0,40")
-  await expect(page.locator(".outcome-profit")).toHaveText(await page.locator(".bond-row").first().getByTestId("profit").innerText())
+  await expect(page.locator(".outcome-profit")).toHaveText(await page.locator(".bond-row.leading-result").getByTestId("profit").innerText())
   await ots.locator("summary").click()
   await expect(ots.getByTestId("breakdown")).toContainText("200,39")
   await expect(ots.getByTestId("breakdown")).toContainText("1 szt.")
@@ -25,7 +25,8 @@ test("amount updates results, comma decimals work, whole bonds and details recon
   await expect(page.getByTestId("bond-ROD")).toHaveCount(1)
   await expect(page.getByTestId("bond-ROS")).toHaveCount(1)
   const rows = page.locator('[data-testid^="bond-"]')
-  for (const row of await rows.all()) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width)
+  for (const row of page.viewportSize()!.width <= 700 ? await rows.all() : []) {
     const box = await row.boundingBox()
     expect(box!.x).toBeGreaterThanOrEqual(0)
     expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
@@ -42,7 +43,7 @@ test("horizon, inflation, NBP assumptions and reinvestment change results", asyn
   await nbp.fill("6")
   await nbp.press("Enter")
   await expect(ror).not.toHaveText(before)
-  await expect(page.locator(".outcome-profit")).toHaveText(await page.locator(".bond-row").first().getByTestId("profit").innerText())
+  await expect(page.locator(".outcome-profit")).toHaveText(await page.locator(".bond-row.leading-result").getByTestId("profit").innerText())
   const slider = page.getByRole("slider", { name: "Okres inwestycji w miesiącach" })
   await page.getByRole("button", { name: "3 lata", exact: true }).click()
   await expect(slider).toHaveAttribute("aria-valuenow", "36")
@@ -81,11 +82,26 @@ test("layout keeps controls and expanded calculations within narrow and tablet v
   for (const width of [320, 768, 1024]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
-    for (const selector of [".scenario-panel", ".outcome-panel", ".comparison-surface", ".bond-details"]) {
+    for (const selector of [".scenario-panel", ".outcome-panel", ".comparison-surface"]) {
       const box = await page.locator(selector).filter({ visible: true }).first().boundingBox()
       expect(box!.x).toBeGreaterThanOrEqual(0)
       expect(box!.x + box!.width).toBeLessThanOrEqual(width)
     }
+    const detailBox = await page.getByTestId("bond-EDO").locator(".bond-details").boundingBox()
+    const cardBox = await page.getByTestId("bond-EDO").boundingBox()
+    expect(detailBox!.width).toBeLessThanOrEqual(cardBox!.width)
     await page.screenshot({ path: `test-results/responsive-${width}.png`, fullPage: true })
   }
+})
+
+
+test("offer keeps the original order and can be navigated horizontally", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop")
+  await page.goto("/")
+  expect(await page.locator('[data-testid^="bond-"]').evaluateAll((cards) => cards.map((card) => card.getAttribute("data-testid")))).toEqual(["bond-OTS", "bond-ROR", "bond-DOR", "bond-TOS", "bond-COI", "bond-EDO"])
+  const table = page.getByRole("region", { name: "Tabela porównawcza obligacji — przewijana poziomo" })
+  await page.getByRole("button", { name: "Następne obligacje" }).click()
+  await expect.poll(() => table.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+  await page.getByRole("button", { name: "Poprzednie obligacje" }).click()
+  await expect.poll(() => table.evaluate((element) => element.scrollLeft)).toBe(0)
 })
