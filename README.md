@@ -55,7 +55,7 @@ Silnik w `lib/calculator.ts` działa niezależnie od interfejsu:
 - Horyzont to dzień rozliczenia. Kupon kończący się dokładnie w dniu wcześniejszego wykupu rozliczamy wraz z tym wykupem; wcześniejsze kupony są już wypłacone. Nie symulujemy przesunięć dni roboczych, świąt ani pięciodniowego oczekiwania na rozliczenie dyspozycji. Jest to porównanie miesięcznych scenariuszy, nie bankowa tabela rozliczenia konkretnej dyspozycji.
 - Bez reinwestowania środki po wykupie i kupony pozostają w gotówce. Z reinwestowaniem kupujemy kolejną partię dopiero przy terminowym wykupie, wykorzystując również zebrane kupony i niewydaną gotówkę. Kupony nie są reinwestowane w trakcie życia obligacji.
 - Przyszłe emisje mają w symulacji warunki bieżącej oferty i cenę 100 zł. Dyskonto zamiany 99,90 zł jest informacją o ofercie, ale nie jest zakładane dla przyszłych zakupów.
-- ROS/ROD są domyślnie wykluczone. Ich uwzględnienie zakłada posiadanie prawa do 800+ i wystarczającego limitu na pierwszy zakup. Nie zakładamy nowego limitu po wykupie, dlatego ich środki nie są automatycznie reinwestowane.
+- ROS/ROD są domyślnie widoczne, z oznaczeniem „Tylko środki z 800+” przy nagłówku. Można je wykluczyć w ustawieniach założeń. Ich uwzględnienie zakłada posiadanie prawa do 800+ i wystarczającego limitu na pierwszy zakup. Nie zakładamy nowego limitu po wykupie, dlatego ich środki nie są automatycznie reinwestowane.
 - Wynik sumuje kapitał, resztę gotówki i wypłacone kupony po podatku i opłatach. Nie uwzględnia IKE/IKZE ani zmiany siły nabywczej pieniądza.
 
 ### Przykłady kontrolne

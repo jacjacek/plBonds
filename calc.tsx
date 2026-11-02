@@ -49,7 +49,7 @@ const BondsCalculator = () => {
   const [inflation, setInflation] = useState(2.5)
   const [nbpRate, setNbpRate] = useState(4)
   const [autoReinvest, setAutoReinvest] = useState(false)
-  const [excludeFamilyBonds, setExcludeFamilyBonds] = useState(true)
+  const [excludeFamilyBonds, setExcludeFamilyBonds] = useState(false)
   const [investment, setInvestment] = useState(100000)
 
   const [purchaseDate, setPurchaseDate] = useState(OFFER.validFrom)
@@ -258,7 +258,7 @@ const BondsCalculator = () => {
           </section>
           <section className="outcome-panel" aria-labelledby="outcome-title">
             <h2 id="outcome-title">Najwyższy zysk w tym scenariuszu</h2>
-            <span className="outcome-bond">{leader.name} · {term(leader.maturityMonths)}</span>
+            <span className="outcome-bond">{leader.name} · {term(leader.maturityMonths)}{leader.familyOnly && " · Tylko środki z 800+"}</span>
             <p className="outcome-profit">{money(leaderProfit)}<span> zł</span></p>
             <span className="outcome-caption">netto po {monthsToWithdraw} mies.</span>
           </section>
@@ -281,6 +281,7 @@ const BondsCalculator = () => {
                   <article key={bond.name} data-testid={`bond-${bond.name}`} className={`bond-row ${bond.name === leader.name && bond.profit > 0 ? "leading-result" : ""} ${bond.basedOnInflation ? "bond-inflation" : bond.basedOnNBP ? "bond-variable" : "bond-fixed"} ${bond.familyOnly ? "bond-family" : ""} ${money(bond.profit).length > 12 ? "long-result" : ""}`} aria-labelledby={`title-${bond.name}`}>
                     <div className="bond-card-header">
                       <div className="bond-card-topline"><span className="bond-code">{bond.name}</span><span className="bond-duration">{term(bond.maturityMonths)}</span></div>
+                      {bond.familyOnly && <p className="bond-eligibility">Tylko środki z 800+</p>}
                       <h3 id={`title-${bond.name}`}>{bond.displayName}</h3>
                       <span className="bond-kind">{bond.basedOnInflation ? "Indeksowane inflacją" : bond.basedOnNBP ? "Zmienne oprocentowanie" : "Stałe oprocentowanie"}</span>
                       <p className="bond-rate">{bond.interestRate.toLocaleString("pl-PL", { minimumFractionDigits: 2 })}<span>%</span><small>rocznie{bond.variableRate ? " na start" : ""}</small></p>

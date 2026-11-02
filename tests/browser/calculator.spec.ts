@@ -10,6 +10,12 @@ test("amount updates results, comma decimals work, whole bonds and details recon
   await expect(page.locator("html")).toHaveAttribute("lang", "pl")
   await expect(page.getByText("Projekt niezależny od Ministerstwa Finansów i banków.", { exact: true })).toBeVisible()
   await expect(page.getByRole("link", { name: "Kup", exact: true })).toHaveCount(0)
+  for (const name of ["ROS", "ROD"]) {
+    const bond = page.getByTestId(`bond-${name}`)
+    await expect(bond).toHaveCount(1)
+    await expect(bond.locator(".bond-card-header .bond-eligibility")).toHaveText("Tylko środki z 800+")
+  }
+  await expect(page.getByTestId("bond-EDO").locator(".bond-eligibility")).toHaveCount(0)
   for (const link of await page.locator(".issuer-link").all()) {
     expect(await link.getAttribute("href")).toMatch(/^https:\/\/www\.obligacjeskarbowe\.pl\/oferta-obligacji\//)
   }
@@ -24,9 +30,13 @@ test("amount updates results, comma decimals work, whole bonds and details recon
   await ots.locator("summary").click()
   await expect(ots.getByTestId("breakdown")).toContainText("200,39")
   await expect(ots.getByTestId("breakdown")).toContainText("1 szt.")
-  await expect(page.getByTestId("bond-ROD")).toHaveCount(0)
   await page.locator(".advanced-settings > summary").click()
-  await page.getByRole("switch", { name: "Uwzględnij obligacje rodzinne" }).click()
+  const familySwitch = page.getByRole("switch", { name: "Uwzględnij obligacje rodzinne" })
+  await expect(familySwitch).toBeChecked()
+  await familySwitch.click()
+  await expect(page.getByTestId("bond-ROD")).toHaveCount(0)
+  await expect(page.getByTestId("bond-ROS")).toHaveCount(0)
+  await familySwitch.click()
   await expect(page.getByTestId("bond-ROD")).toHaveCount(1)
   await expect(page.getByTestId("bond-ROS")).toHaveCount(1)
   const rows = page.locator('[data-testid^="bond-"]')
@@ -103,7 +113,7 @@ test("layout keeps controls and expanded calculations within narrow and tablet v
 test("offer keeps the original order and can be navigated horizontally", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop")
   await page.goto("/")
-  expect(await page.locator('[data-testid^="bond-"]').evaluateAll((cards) => cards.map((card) => card.getAttribute("data-testid")))).toEqual(["bond-OTS", "bond-ROR", "bond-DOR", "bond-TOS", "bond-COI", "bond-EDO"])
+  expect(await page.locator('[data-testid^="bond-"]').evaluateAll((cards) => cards.map((card) => card.getAttribute("data-testid")))).toEqual(["bond-OTS", "bond-ROR", "bond-DOR", "bond-TOS", "bond-COI", "bond-EDO", "bond-ROS", "bond-ROD"])
   const table = page.getByRole("region", { name: "Tabela porównawcza obligacji — przewijana poziomo" })
   await page.getByRole("button", { name: "Następne obligacje" }).click()
   await expect.poll(() => table.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)

@@ -181,6 +181,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 .bond-card-topline { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .bond-code { font-size: 15px; font-weight: 500; letter-spacing: -.01em; }
 .bond-duration { color: var(--quiet); font-size: 13px; }
+.bond-eligibility { margin: 4px 0 0; color: var(--bond-family); font-size: 12px; }
 .bond-card-header h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .bond-kind { order: 3; display: flex; align-items: center; gap: 7px; margin-top: 12px; color: var(--quiet); font-size: 12px; }
 .bond-kind::before { content: ""; flex-shrink: 0; width: 7px; height: 7px; background: var(--tone-dot); }
